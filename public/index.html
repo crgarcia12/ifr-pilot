@@ -49,25 +49,71 @@
   .legend{font-size:11px;color:var(--dim)}
   .legend kbd{background:#0e1620;border:1px solid #28405c;border-bottom-width:2px;border-radius:3px;padding:1px 5px;color:var(--ink)}
   #toast{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.75);padding:10px 16px;border-radius:6px;color:var(--accent);font-size:14px;display:none;z-index:9}
-  /* Autopilot panel */
-  #ap-panel{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:10px;font-size:12px}
-  #ap-panel .row{display:flex;flex-direction:column;gap:4px;background:#0a121b;border:1px solid var(--edge);border-radius:6px;padding:6px}
-  #ap-panel label{color:var(--dim);font-size:10px;letter-spacing:.15em}
-  #ap-panel .v{font-size:14px;color:var(--ink);font-weight:600}
-  #ap-panel .v.on{color:var(--accent)}
-  #ap-panel button{
+  /* Autopilot panel — modes + LCD readouts */
+  #ap-panel{display:grid;grid-template-columns:auto 1fr;gap:10px;padding:10px;font-size:12px;align-items:stretch}
+  .ap-modes{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;align-content:start}
+  .ap-modes .master{grid-column:1 / -1}
+  .ap-modes button{
     appearance:none;border:1px solid #28405c;background:#0e1620;color:var(--ink);
-    font-family:inherit;font-size:11px;padding:4px 6px;border-radius:4px;cursor:pointer
+    font-family:inherit;font-size:12px;letter-spacing:.18em;padding:8px 14px;border-radius:5px;
+    cursor:pointer;font-weight:700;min-width:74px
   }
-  #ap-panel button.on{background:var(--accent);color:#001b10;border-color:var(--accent);font-weight:700}
-  #ap-panel input{
-    background:#0a121b;border:1px solid var(--edge);color:var(--ink);font-family:inherit;
-    font-size:12px;padding:3px 4px;border-radius:4px;width:100%
+  .ap-modes button:hover{border-color:#3a5a82}
+  .ap-modes button.on{background:var(--accent);color:#001b10;border-color:var(--accent);box-shadow:0 0 6px rgba(0,255,157,.4)}
+  .ap-modes button.master{padding:10px;font-size:13px}
+  .ap-lcds{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .lcd{
+    background:linear-gradient(180deg,#0a1810 0%,#0d2218 100%);
+    border:2px inset #1f4030;border-radius:6px;padding:6px 10px;
+    display:flex;flex-direction:column;gap:2px;
+    box-shadow:inset 0 0 8px rgba(0,0,0,.6);
+    position:relative;
   }
-  #ap-panel .ctrl{display:flex;gap:4px;align-items:center}
+  .lcd::after{
+    content:'';position:absolute;inset:0;border-radius:4px;pointer-events:none;
+    background:repeating-linear-gradient(0deg,rgba(0,0,0,.18) 0,rgba(0,0,0,.18) 1px,transparent 1px,transparent 3px);
+  }
+  .lcd .lbl{font-size:10px;letter-spacing:.25em;color:#3a8a5a;text-transform:uppercase}
+  .lcd .row{display:flex;align-items:baseline;gap:6px;justify-content:space-between}
+  .lcd .val{
+    font-family:'Courier New',ui-monospace,monospace;font-size:22px;font-weight:700;
+    color:#5fffa6;text-shadow:0 0 6px rgba(95,255,166,.55);letter-spacing:.08em;
+    background:transparent;border:none;outline:none;width:90px;text-align:right;padding:0;
+  }
+  .lcd .val::-webkit-outer-spin-button,.lcd .val::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+  .lcd .val[type=number]{-moz-appearance:textfield}
+  .lcd .unit{font-size:10px;color:#3a8a5a;letter-spacing:.15em}
+
+  /* Frequency panel */
+  #freq-panel{display:flex;flex-direction:column;gap:8px;padding:10px;font-size:12px}
+  .freq-row{
+    display:grid;grid-template-columns:46px 1fr auto 1fr 36px;gap:6px;align-items:center;
+    background:#0a121b;border:1px solid var(--edge);border-radius:6px;padding:6px 8px;
+  }
+  .freq-row .tag{font-size:10px;color:var(--dim);letter-spacing:.2em;font-weight:700}
+  .freq-row .slot{
+    background:linear-gradient(180deg,#0a1810,#0d2218);border:2px inset #1f4030;border-radius:5px;
+    padding:4px 8px;font-family:'Courier New',monospace;color:#5fffa6;
+    text-shadow:0 0 6px rgba(95,255,166,.5);font-size:16px;font-weight:700;text-align:center;letter-spacing:.06em;
+    position:relative;
+  }
+  .freq-row .slot.standby{color:#ffb547;text-shadow:0 0 6px rgba(255,181,71,.4)}
+  .freq-row .slot .mini{display:block;font-size:8px;letter-spacing:.2em;color:#3a8a5a;font-weight:600}
+  .freq-row .slot.standby .mini{color:#7a5a30}
+  .freq-row .slot input{
+    background:transparent;border:none;outline:none;color:inherit;font:inherit;
+    width:100%;text-align:center;padding:0;text-shadow:inherit;
+  }
+  .freq-row .swap{
+    appearance:none;border:1px solid #28405c;background:#0e1620;color:var(--accent);
+    font-family:inherit;font-size:14px;padding:6px;border-radius:5px;cursor:pointer;font-weight:700;
+  }
+  .freq-row .swap:hover{border-color:var(--accent)}
+  .freq-row .ident{font-size:11px;color:var(--dim);text-align:center}
   @media (max-width: 900px){
     #app{grid-template-columns:1fr 1fr;}
     #ai{grid-column:1 / -1;}
+    #ap-panel{grid-template-columns:1fr}
   }
 </style>
 </head>
@@ -101,32 +147,60 @@
     <canvas id="cv-map"></canvas>
   </section>
 
-  <section class="inst" id="ap" style="grid-column:1 / -1">
+  <section class="inst" id="freq" style="grid-column:1 / 2">
+    <div class="title"><span>Radios</span><span class="badge">NAV/COM</span></div>
+    <div id="freq-panel">
+      <div class="freq-row" data-radio="nav">
+        <span class="tag">NAV</span>
+        <div class="slot" id="nav-active">
+          <span class="mini">ACTIVE</span>
+          <span id="nav-active-val">117.80</span>
+        </div>
+        <button class="swap" id="nav-swap" title="Swap NAV freqs">⇄</button>
+        <div class="slot standby">
+          <span class="mini">STBY</span>
+          <input id="nav-standby-val" type="text" inputmode="decimal" value="113.40" />
+        </div>
+        <span class="ident" id="nav-ident">SEA</span>
+      </div>
+      <div class="freq-row" data-radio="com">
+        <span class="tag">COM</span>
+        <div class="slot" id="com-active">
+          <span class="mini">ACTIVE</span>
+          <span id="com-active-val">120.40</span>
+        </div>
+        <button class="swap" id="com-swap" title="Swap COM freqs">⇄</button>
+        <div class="slot standby">
+          <span class="mini">STBY</span>
+          <input id="com-standby-val" type="text" inputmode="decimal" value="121.50" />
+        </div>
+        <span class="ident" id="com-ident">TWR</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="inst" id="ap" style="grid-column:2 / -1">
     <div class="title"><span>Autopilot</span><span class="badge" id="ap-master">OFF</span></div>
     <div id="ap-panel">
-      <div class="row">
-        <label>MASTER</label>
-        <button id="ap-toggle">AP OFF</button>
+      <div class="ap-modes">
+        <button id="ap-toggle" class="master">AP OFF</button>
+        <button id="ap-hdg">HDG</button>
+        <button id="ap-nav">NAV</button>
+        <button id="ap-alt">ALT</button>
+        <button id="ap-app">APP</button>
       </div>
-      <div class="row">
-        <label>HDG MODE</label>
-        <div class="ctrl">
-          <button id="ap-hdg">HDG</button>
-          <input id="ap-hdg-val" type="number" min="0" max="359" value="090" />
+      <div class="ap-lcds">
+        <div class="lcd">
+          <span class="lbl">HDG</span>
+          <div class="row"><input class="val" id="ap-hdg-val" type="number" min="0" max="359" value="090" /><span class="unit">°</span></div>
         </div>
-      </div>
-      <div class="row">
-        <label>ALT MODE</label>
-        <div class="ctrl">
-          <button id="ap-alt">ALT</button>
-          <input id="ap-alt-val" type="number" min="0" max="40000" step="100" value="3000" />
+        <div class="lcd">
+          <span class="lbl">CRS</span>
+          <div class="row"><input class="val" id="ap-crs-val" type="number" min="0" max="359" value="090" /><span class="unit">°</span></div>
         </div>
-      </div>
-      <div class="row">
-        <label>NAV MODE</label>
-        <div class="ctrl">
-          <button id="ap-nav">NAV</button>
-          <span class="v" id="ap-nav-status">—</span>
+        <div class="lcd">
+          <span class="lbl">ALT</span>
+          <div class="row"><input class="val" id="ap-alt-val" type="number" min="0" max="40000" step="100" value="3000" /><span class="unit">FT</span></div>
         </div>
       </div>
     </div>
@@ -164,7 +238,7 @@
     simRate: loadRate(),
     simTime: 0,
     lastWall: 0,
-    ap: { master: false, hdgOn: false, altOn: false, navOn: false,
+    ap: { master: false, hdgOn: false, altOn: false, navOn: false, appOn: false,
           hdgTarget: 90, altTarget: 3000, obs: 90 }
   };
 
@@ -224,7 +298,8 @@
     alt: document.getElementById('ap-alt'),
     altVal: document.getElementById('ap-alt-val'),
     nav: document.getElementById('ap-nav'),
-    navStatus: document.getElementById('ap-nav-status')
+    app: document.getElementById('ap-app'),
+    crsVal: document.getElementById('ap-crs-val')
   };
   function syncAp(){
     apEls.master.textContent = state.ap.master ? 'ON' : 'OFF';
@@ -234,14 +309,103 @@
     apEls.hdg.classList.toggle('on', state.ap.hdgOn);
     apEls.alt.classList.toggle('on', state.ap.altOn);
     apEls.nav.classList.toggle('on', state.ap.navOn);
+    apEls.app.classList.toggle('on', state.ap.appOn);
   }
   apEls.toggle.addEventListener('click', () => { state.ap.master = !state.ap.master; syncAp(); });
-  apEls.hdg.addEventListener('click', () => { state.ap.hdgOn = !state.ap.hdgOn; if (state.ap.hdgOn) state.ap.navOn = false; syncAp(); });
+  apEls.hdg.addEventListener('click', () => {
+    state.ap.hdgOn = !state.ap.hdgOn;
+    if (state.ap.hdgOn){ state.ap.navOn = false; state.ap.appOn = false; }
+    syncAp();
+  });
   apEls.alt.addEventListener('click', () => { state.ap.altOn = !state.ap.altOn; syncAp(); });
-  apEls.nav.addEventListener('click', () => { state.ap.navOn = !state.ap.navOn; if (state.ap.navOn) state.ap.hdgOn = false; syncAp(); });
+  apEls.nav.addEventListener('click', () => {
+    state.ap.navOn = !state.ap.navOn;
+    if (state.ap.navOn){ state.ap.hdgOn = false; state.ap.appOn = false; }
+    syncAp();
+  });
+  apEls.app.addEventListener('click', () => {
+    state.ap.appOn = !state.ap.appOn;
+    if (state.ap.appOn){ state.ap.hdgOn = false; state.ap.navOn = false; state.ap.altOn = true; }
+    syncAp();
+  });
   apEls.hdgVal.addEventListener('change', () => { state.ap.hdgTarget = ((parseFloat(apEls.hdgVal.value)||0)%360+360)%360; });
   apEls.altVal.addEventListener('change', () => { state.ap.altTarget = Math.max(0, parseFloat(apEls.altVal.value)||0); });
+  apEls.crsVal.addEventListener('change', () => {
+    const v = ((parseFloat(apEls.crsVal.value)||0)%360+360)%360;
+    state.ap.obs = v; VOR.courseOBS = v;
+    apEls.crsVal.value = String(Math.round(v)).padStart(3,'0');
+  });
+  apEls.crsVal.value = String(VOR.courseOBS).padStart(3,'0');
   syncAp();
+
+  // ===== Frequency panel wiring ============================================
+  // Lightweight NAV/COM database — used to derive station identifier from freq.
+  const NAV_DB = {
+    '117.80': { id: 'SEA', lat: 47.435, lon: -122.309 },
+    '113.40': { id: 'PAE', lat: 47.921, lon: -122.281 },
+    '116.80': { id: 'OLM', lat: 46.971, lon: -122.901 }
+  };
+  const COM_DB = {
+    '120.40': 'TWR', '121.50': 'GUARD', '118.30': 'GND', '125.30': 'APP', '119.20': 'CTR'
+  };
+  const radios = {
+    nav: { active: '117.80', standby: '113.40' },
+    com: { active: '120.40', standby: '121.50' }
+  };
+  const freqEls = {
+    navActive: document.getElementById('nav-active-val'),
+    navStandby: document.getElementById('nav-standby-val'),
+    navIdent:  document.getElementById('nav-ident'),
+    navSwap:   document.getElementById('nav-swap'),
+    comActive: document.getElementById('com-active-val'),
+    comStandby:document.getElementById('com-standby-val'),
+    comIdent:  document.getElementById('com-ident'),
+    comSwap:   document.getElementById('com-swap'),
+    vorBadge:  document.getElementById('vor-id')
+  };
+  function normFreq(s){
+    const n = parseFloat(s);
+    if (!Number.isFinite(n)) return null;
+    return n.toFixed(2);
+  }
+  function syncRadios(){
+    freqEls.navActive.textContent = radios.nav.active;
+    freqEls.comActive.textContent = radios.com.active;
+    const navInfo = NAV_DB[radios.nav.active];
+    freqEls.navIdent.textContent = navInfo ? navInfo.id : '---';
+    freqEls.comIdent.textContent = COM_DB[radios.com.active] || '---';
+    if (navInfo){
+      VOR.id = navInfo.id; VOR.lat = navInfo.lat; VOR.lon = navInfo.lon; VOR.freq = radios.nav.active;
+      freqEls.vorBadge.textContent = VOR.id + ' ' + VOR.freq;
+    } else {
+      freqEls.vorBadge.textContent = '--- ' + radios.nav.active;
+    }
+  }
+  function swapRadio(which){
+    const r = radios[which];
+    const stbyEl = which === 'nav' ? freqEls.navStandby : freqEls.comStandby;
+    const stbyNorm = normFreq(stbyEl.value);
+    if (stbyNorm === null) { stbyEl.value = r.standby; return; }
+    const tmp = r.active;
+    r.active = stbyNorm;
+    r.standby = tmp;
+    stbyEl.value = r.standby;
+    syncRadios();
+    showToast(which.toUpperCase() + ' ' + r.active);
+  }
+  freqEls.navSwap.addEventListener('click', () => swapRadio('nav'));
+  freqEls.comSwap.addEventListener('click', () => swapRadio('com'));
+  freqEls.navStandby.addEventListener('change', () => {
+    const v = normFreq(freqEls.navStandby.value);
+    if (v === null) { freqEls.navStandby.value = radios.nav.standby; return; }
+    radios.nav.standby = v; freqEls.navStandby.value = v;
+  });
+  freqEls.comStandby.addEventListener('change', () => {
+    const v = normFreq(freqEls.comStandby.value);
+    if (v === null) { freqEls.comStandby.value = radios.com.standby; return; }
+    radios.com.standby = v; freqEls.comStandby.value = v;
+  });
+  syncRadios();
 
   // ===== Physics step =====================================================
   function clamp(v, lo, hi){ return v<lo?lo:v>hi?hi:v; }
@@ -261,35 +425,28 @@
 
     // Autopilot (mild authority, will not fight strong stick input)
     if (state.ap.master){
-      // Heading hold or NAV
+      // Heading hold or NAV/APP
       let hdgTarget = state.ap.hdgTarget;
-      if (state.ap.navOn){
+      const navTracking = state.ap.navOn || state.ap.appOn;
+      if (navTracking){
         // Steer toward VOR radial (course OBS) intercept
-        const brg = bearingTo(state.lat, state.lon, VOR.lat, VOR.lon);
         const cdi = vorCdi(); // -1..+1 (deflection)
-        // Target a 30° intercept reduced as CDI centers
         const intercept = clamp(cdi * 30, -45, 45);
         hdgTarget = (VOR.courseOBS + intercept + 360) % 360;
-        // If we're past the station, just track outbound on the course
         const dist = haversineNm(state.lat, state.lon, VOR.lat, VOR.lon);
         if (dist < 0.5) hdgTarget = VOR.courseOBS;
-        apEls.navStatus.textContent = 'CDI ' + cdi.toFixed(2) + '  ' + dist.toFixed(1) + ' NM';
-      } else {
-        apEls.navStatus.textContent = '—';
       }
-      if (state.ap.hdgOn || state.ap.navOn){
+      if (state.ap.hdgOn || navTracking){
         const err = angleDiff(hdgTarget, state.hdg);
         const targetRoll = clamp(err * 1.0, -25, 25);
         state.roll += (targetRoll - state.roll) * Math.min(1, 1.5*dt);
       }
-      if (state.ap.altOn){
+      if (state.ap.altOn || state.ap.appOn){
         const errFt = state.ap.altTarget - state.alt;
         const targetVs = clamp(errFt * 6, -1500, 1500); // fpm
         const targetPitch = clamp(targetVs / 100, -10, 10);
         state.pitch += (targetPitch - state.pitch) * Math.min(1, 1.5*dt);
       }
-    } else {
-      apEls.navStatus.textContent = '—';
     }
 
     // Auto-level when no roll input AND AP is not commanding
