@@ -491,10 +491,12 @@
     return 2*R*Math.asin(Math.sqrt(a));
   }
   function vorCdi(){
-    // Course deviation: angle from VOR to A/C minus selected radial.
+    // CDI convention: needle deflects toward the selected course (fly TO the needle).
+    // If aircraft is LEFT of the radial → needle deflects RIGHT (positive).
+    // If aircraft is RIGHT of the radial → needle deflects LEFT (negative).
     const brgFromVor = bearingTo(VOR.lat, VOR.lon, state.lat, state.lon);
-    const dev = angleDiff(brgFromVor, VOR.courseOBS); // degrees
-    return clamp(dev / 10, -1, 1); // full scale at 10°
+    const dev = angleDiff(brgFromVor, VOR.courseOBS); // degrees, positive = A/C right of course
+    return clamp(-dev / 10, -1, 1); // full scale at 10°, sign flipped for fly-toward convention
   }
 
   // ===== Renderers =========================================================
