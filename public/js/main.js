@@ -92,6 +92,25 @@ styles.textContent = `
   #ifr-modal .box{background:var(--panel);border:1px solid var(--accent);border-radius:8px;padding:18px 24px;text-align:center;min-width:260px}
   #ifr-modal h3{margin:0 0 8px;color:var(--accent);letter-spacing:.2em;font-size:14px}
   #ifr-modal p{margin:0 0 12px;color:var(--ink);font-size:13px}
+  /* Mission briefing — full-screen splash shown on load and via "Missions" button. */
+  #ifr-briefing{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,5,9,.92);z-index:30;font-family:inherit;color:var(--ink)}
+  #ifr-briefing.show{display:flex}
+  #ifr-briefing .wrap{background:var(--panel);border:1px solid var(--accent);border-radius:10px;padding:24px 28px;max-width:680px;width:92%;max-height:88vh;overflow-y:auto;box-shadow:0 0 40px rgba(0,255,157,.15)}
+  #ifr-briefing h2{margin:0 0 4px;color:var(--accent);letter-spacing:.25em;font-size:16px}
+  #ifr-briefing .sub{color:var(--dim);font-size:11px;letter-spacing:.2em;margin-bottom:16px;text-transform:uppercase}
+  #ifr-briefing .b-list{display:flex;flex-direction:column;gap:10px}
+  #ifr-briefing .b-card{background:#0a121b;border:1px solid var(--edge);border-radius:8px;padding:12px 14px;transition:border-color .15s}
+  #ifr-briefing .b-card:hover{border-color:#3a5a82}
+  #ifr-briefing .b-card .b-id{font-size:11px;color:var(--dim);letter-spacing:.2em}
+  #ifr-briefing .b-card .b-ttl{font-size:15px;color:var(--ink);font-weight:700;margin:2px 0 6px}
+  #ifr-briefing .b-card .b-desc{font-size:12px;color:var(--ink);opacity:.8;margin-bottom:8px;line-height:1.5}
+  #ifr-briefing .b-card .b-route{font-size:11px;color:var(--accent);letter-spacing:.15em;margin-bottom:10px;font-weight:700}
+  #ifr-briefing .b-card button{appearance:none;border:1px solid var(--accent);background:var(--accent);color:#001b10;font-family:inherit;font-size:12px;font-weight:700;padding:8px 16px;border-radius:5px;cursor:pointer;letter-spacing:.15em}
+  #ifr-briefing .b-card button:hover{filter:brightness(1.1)}
+  #ifr-briefing .close{position:absolute;top:14px;right:18px;background:none;border:0;color:var(--dim);font-size:22px;cursor:pointer}
+  #ifr-briefing .close:hover{color:var(--ink)}
+  #ifr-missions-btn{appearance:none;border:1px solid var(--accent);background:transparent;color:var(--accent);font-family:inherit;font-size:11px;font-weight:700;letter-spacing:.2em;padding:5px 10px;border-radius:4px;cursor:pointer;margin-left:auto}
+  #ifr-missions-btn:hover{background:var(--accent);color:#001b10}
 `;
 document.head.appendChild(styles);
 
@@ -124,6 +143,36 @@ overlay.innerHTML = `
   </div>
 `;
 document.body.appendChild(overlay);
+
+// Mission Briefing splash — visible on first load so the user sees the
+// available missions immediately, even on small screens.
+const briefing = document.createElement('div');
+briefing.id = 'ifr-briefing';
+briefing.innerHTML = `
+  <div class="wrap" style="position:relative">
+    <button class="close" id="ifr-briefing-close" title="Close">×</button>
+    <h2>MISSION BRIEFING</h2>
+    <div class="sub">Select a mission to begin</div>
+    <div class="b-list" id="ifr-briefing-list"></div>
+  </div>
+`;
+document.body.appendChild(briefing);
+document.getElementById('ifr-briefing-close').addEventListener('click', () => {
+  briefing.classList.remove('show');
+});
+
+// Header "Missions" button to re-open the briefing.
+(function addHeaderBtn() {
+  const hdr = document.querySelector('header .pfd');
+  if (!hdr) return;
+  const btn = document.createElement('button');
+  btn.id = 'ifr-missions-btn';
+  btn.type = 'button';
+  btn.textContent = '✈ MISSIONS';
+  btn.title = 'Open mission briefing';
+  btn.addEventListener('click', () => briefing.classList.add('show'));
+  hdr.appendChild(btn);
+})();
 
 // Modal for mission complete / failed.
 const modal = document.createElement('div');
@@ -201,6 +250,10 @@ async function loadData() {
     NAVAIDS_BY_ID = Object.fromEntries(NAVAIDS.map((x) => [x.id, x]));
     MISSIONS = m.missions || [];
     renderMissions();
+    // Auto-show the briefing splash on first load if there are missions.
+    if (MISSIONS.length) {
+      document.getElementById('ifr-briefing').classList.add('show');
+    }
     // Expose for the inline drawMap.
     window.__ifrNavaids = NAVAIDS;
   } catch (err) {
@@ -228,6 +281,31 @@ function renderMissions() {
     `;
     card.querySelector('.start-btn').addEventListener('click', () => startMission(m.id));
     list.appendChild(card);
+  }
+  // Also populate the full-screen briefing splash.
+  const blist = document.getElementById('ifr-briefing-list');
+  if (blist) {
+    blist.innerHTML = '';
+    if (!MISSIONS.length) {
+      blist.innerHTML = '<div style="color:var(--dim);font-size:12px">No missions available.</div>';
+    }
+    for (const m of MISSIONS) {
+      const route = (m.waypoints || []).map((w) => w.navaid).join('  →  ');
+      const card = document.createElement('div');
+      card.className = 'b-card';
+      card.innerHTML = `
+        <div class="b-id">MISSION ${m.id}</div>
+        <div class="b-ttl">${m.title || ''}</div>
+        <div class="b-desc">${m.description || ''}</div>
+        <div class="b-route">${route}</div>
+        <button data-id="${m.id}" type="button">▶ START MISSION</button>
+      `;
+      card.querySelector('button').addEventListener('click', () => {
+        startMission(m.id);
+        document.getElementById('ifr-briefing').classList.remove('show');
+      });
+      blist.appendChild(card);
+    }
   }
 }
 
