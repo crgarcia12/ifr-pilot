@@ -555,9 +555,14 @@
   }
   function vorCdi(){
     // Course deviation: angle from VOR to A/C minus selected radial.
+    // CDI sign convention: "fly toward the bar." If the aircraft is RIGHT of
+    // the selected course (clockwise from the OBS radial as seen from the
+    // station, dev > 0), the course is to the aircraft's LEFT, so the bar
+    // must deflect LEFT — hence the negation. This sign also makes the NAV
+    // autopilot intercept turn toward the course rather than away from it.
     const brgFromVor = bearingTo(VOR.lat, VOR.lon, state.lat, state.lon);
     const dev = angleDiff(brgFromVor, VOR.courseOBS); // degrees
-    return clamp(dev / 10, -1, 1); // full scale at 10°
+    return clamp(-dev / 10, -1, 1); // full scale at 10°
   }
 
   // ===== Renderers =========================================================

@@ -91,7 +91,39 @@ test('state remains finite at 32x for 30 wall-clock seconds', () => {
   }
 });
 
-// ===== Mission system =======================================================
+test('VOR CDI deflects toward course (fly-toward-the-bar convention)', () => {
+  // Replicate the in-page nav math + corrected vorCdi sign.
+  function bearingTo(lat1, lon1, lat2, lon2){
+    const φ1 = lat1*Math.PI/180, φ2 = lat2*Math.PI/180;
+    const Δλ = (lon2-lon1)*Math.PI/180;
+    const y = Math.sin(Δλ)*Math.cos(φ2);
+    const x = Math.cos(φ1)*Math.sin(φ2) - Math.sin(φ1)*Math.cos(φ2)*Math.cos(Δλ);
+    return ((Math.atan2(y, x)*180/Math.PI)+360)%360;
+  }
+  function angleDiff(a, b){ return ((a-b+540)%360)-180; }
+  function clamp(v,lo,hi){ return Math.max(lo, Math.min(hi, v)); }
+  function vorCdi(VOR, st){
+    const brg = bearingTo(VOR.lat, VOR.lon, st.lat, st.lon);
+    const dev = angleDiff(brg, VOR.courseOBS);
+    return clamp(-dev / 10, -1, 1);
+  }
+  const VOR = { lat: 0, lon: 0, courseOBS: 0 }; // OBS = north radial
+  // Aircraft NE of station (radial 045): right of selected north radial.
+  // Course is to A/C's LEFT, so bar must deflect LEFT (cdi < 0).
+  const eastOfCourse = vorCdi(VOR, { lat: 1, lon: 1 });
+  assert.ok(eastOfCourse < 0, `expected cdi<0 (deflect left), got ${eastOfCourse}`);
+  // Aircraft NW of station (radial 315): left of selected north radial.
+  // Course is to A/C's RIGHT, bar deflects RIGHT (cdi > 0).
+  const westOfCourse = vorCdi(VOR, { lat: 1, lon: -1 });
+  assert.ok(westOfCourse > 0, `expected cdi>0 (deflect right), got ${westOfCourse}`);
+  // On course (due north): zero deflection.
+  const onCourse = vorCdi(VOR, { lat: 1, lon: 0 });
+  assert.ok(Math.abs(onCourse) < 0.01, `expected ~0 on course, got ${onCourse}`);
+  // Confirm the source uses the negated-dev formula.
+  assert.match(html, /clamp\(\s*-\s*dev\s*\/\s*10/);
+});
+
+
 // Load the shipped ESM modules under public/js/* via dynamic import.
 const { pathToFileURL } = require('node:url');
 
