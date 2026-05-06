@@ -751,6 +751,45 @@
       const a = project(state.lat, state.lon); ctx.moveTo(a.x, a.y);
       for (const wp of route){ if (!wp) continue; const p = project(wp.lat, wp.lon); ctx.lineTo(p.x, p.y); }
       ctx.stroke();
+
+      // Per-leg course (CRS) and distance labels at the midpoint of each
+      // segment so the pilot can read the heading to fly between waypoints.
+      const legs = [{ lat: state.lat, lon: state.lon }, ...route.filter(Boolean)];
+      ctx.font = '10px monospace';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      for (let i = 0; i < legs.length - 1; i++){
+        const A = legs[i], B = legs[i+1];
+        const pa = project(A.lat, A.lon), pb = project(B.lat, B.lon);
+        // Skip very short on-screen segments.
+        const segPx = Math.hypot(pb.x - pa.x, pb.y - pa.y);
+        if (segPx < 36) continue;
+        const crs = Math.round(bearingTo(A.lat, A.lon, B.lat, B.lon));
+        const dist = haversineNm(A.lat, A.lon, B.lat, B.lon);
+        const label = `CRS ${String(crs).padStart(3,'0')}° · ${dist.toFixed(1)} NM`;
+        const mx = (pa.x + pb.x) / 2;
+        const my = (pa.y + pb.y) / 2;
+        // Rotate text to align with the leg, but flip if it would render upside-down.
+        let ang = Math.atan2(pb.y - pa.y, pb.x - pa.x);
+        if (ang > Math.PI/2 || ang < -Math.PI/2) ang += Math.PI;
+        ctx.save();
+        ctx.translate(mx, my);
+        ctx.rotate(ang);
+        const padX = 5, padY = 2;
+        const tw = ctx.measureText(label).width;
+        // Dark pill so the label stays readable over the green route line.
+        ctx.fillStyle = 'rgba(7,11,16,.85)';
+        ctx.strokeStyle = 'rgba(0,255,157,.55)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        const rectX = -tw/2 - padX, rectY = -7 - padY, rectW = tw + 2*padX, rectH = 14 + 2*padY;
+        if (ctx.roundRect) { ctx.roundRect(rectX, rectY, rectW, rectH, 4); }
+        else { ctx.rect(rectX, rectY, rectW, rectH); }
+        ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#cfe7ff';
+        ctx.fillText(label, 0, 1);
+        ctx.restore();
+      }
+      ctx.textBaseline = 'alphabetic';
     }
 
     // Navaid markers (loaded by main.js).
