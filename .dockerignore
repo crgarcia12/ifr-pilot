@@ -1,0 +1,6 @@
+node_modules
+.git
+tests
+specs
+*.md
+!LILIPUT_DEPLOY_CONTRACT.md
