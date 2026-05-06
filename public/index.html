@@ -484,64 +484,91 @@
     const { ctx, w, h } = setupCanvas(c);
     ctx.clearRect(0,0,w,h);
     const cx = w/2, cy = h/2;
-    const scaleNm = 5;
+
+    // The zoomable/pannable moving map. main.js owns state.map; we fall back
+    // to a sensible default if the module hasn't booted yet.
+    const m = state.map || { scaleNm: 5, centerLat: state.lat, centerLon: state.lon, follow: true };
+    const scaleNm = m.scaleNm;
+    const centerLat = m.follow ? state.lat : m.centerLat;
+    const centerLon = m.follow ? state.lon : m.centerLon;
     const pxPerNm = Math.min(w,h)/2 / scaleNm;
-    document.getElementById('map-scale').textContent = scaleNm + ' NM';
+    document.getElementById('map-scale').textContent = (scaleNm < 1 ? scaleNm.toFixed(1) : Math.round(scaleNm)) + ' NM';
+
+    // World → screen helper (north-up).
+    function project(lat, lon){
+      const dN = (lat - centerLat) * 60; // NM north
+      const dE = (lon - centerLon) * 60 * Math.cos(centerLat*Math.PI/180);
+      return { x: cx + dE * pxPerNm, y: cy - dN * pxPerNm };
+    }
 
     // BG grid
     ctx.fillStyle = '#070b10'; ctx.fillRect(0,0,w,h);
     ctx.strokeStyle = '#10202f'; ctx.lineWidth = 1;
-    for (let i=-scaleNm;i<=scaleNm;i++){
-      ctx.beginPath(); ctx.moveTo(cx + i*pxPerNm, 0); ctx.lineTo(cx + i*pxPerNm, h); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(0, cy + i*pxPerNm); ctx.lineTo(w, cy + i*pxPerNm); ctx.stroke();
+    const gridStep = scaleNm <= 5 ? 1 : scaleNm <= 25 ? 5 : scaleNm <= 100 ? 25 : 100;
+    const gridPx = gridStep * pxPerNm;
+    if (gridPx > 6){
+      for (let x = cx % gridPx; x < w; x += gridPx){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke(); }
+      for (let y = cy % gridPx; y < h; y += gridPx){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); }
     }
-    // Range rings
-    ctx.strokeStyle = '#1f3a52';
-    for (const r of [1,2,3,4,5]){
+    // Range rings centred on map centre.
+    ctx.strokeStyle = '#1f3a52'; ctx.fillStyle = '#3a5a82'; ctx.font='9px monospace'; ctx.textAlign='left';
+    const ringStep = gridStep;
+    for (let r = ringStep; r <= scaleNm; r += ringStep){
       ctx.beginPath(); ctx.arc(cx,cy, r*pxPerNm, 0, Math.PI*2); ctx.stroke();
-      ctx.fillStyle = '#3a5a82'; ctx.font='9px monospace'; ctx.textAlign='left';
       ctx.fillText(r+'NM', cx + r*pxPerNm + 2, cy - 2);
     }
 
-    // VOR station (track-up: rotate world by -hdg)
-    ctx.save();
-    ctx.translate(cx,cy);
-    ctx.rotate(-state.hdg*Math.PI/180);
-    // VOR marker
-    const dN = (VOR.lat - state.lat) * 60; // NM north
-    const dE = (VOR.lon - state.lon) * 60 * Math.cos(state.lat*Math.PI/180);
-    const vx = dE * pxPerNm, vy = -dN * pxPerNm;
-    ctx.fillStyle = '#00ff9d'; ctx.strokeStyle = '#00ff9d'; ctx.lineWidth = 2;
-    ctx.beginPath();
-    for (let i=0;i<6;i++){
-      const a = i*Math.PI/3;
-      const x = vx + Math.cos(a)*8, y = vy + Math.sin(a)*8;
-      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    // Active mission route polyline (drawn under markers).
+    const route = window.__ifrActiveRoute;
+    if (Array.isArray(route) && route.length){
+      ctx.strokeStyle = 'rgba(0,255,157,.55)'; ctx.lineWidth = 2;
+      ctx.beginPath();
+      const a = project(state.lat, state.lon); ctx.moveTo(a.x, a.y);
+      for (const wp of route){ if (!wp) continue; const p = project(wp.lat, wp.lon); ctx.lineTo(p.x, p.y); }
+      ctx.stroke();
     }
-    ctx.closePath(); ctx.stroke();
-    ctx.fillStyle = '#00ff9d'; ctx.beginPath(); ctx.arc(vx,vy,2,0,Math.PI*2); ctx.fill();
-    ctx.fillStyle = '#cfe7ff'; ctx.font = '10px monospace'; ctx.textAlign='left';
-    ctx.fillText(VOR.id+' '+VOR.freq, vx + 12, vy + 4);
 
-    // OBS course line through VOR
+    // Navaid markers (loaded by main.js).
+    const navaids = window.__ifrNavaids || [{ id: VOR.id, freq: VOR.freq, lat: VOR.lat, lon: VOR.lon, type: 'VORDME' }];
+    ctx.lineWidth = 2;
+    for (const n of navaids){
+      const p = project(n.lat, n.lon);
+      if (p.x < -20 || p.x > w+20 || p.y < -20 || p.y > h+20) continue;
+      const isIls = n.type === 'ILS';
+      ctx.strokeStyle = isIls ? '#ffb547' : '#00ff9d';
+      ctx.fillStyle   = isIls ? '#ffb547' : '#00ff9d';
+      ctx.beginPath();
+      // Hexagon for VORs, square for ILS.
+      if (isIls){
+        ctx.rect(p.x-6, p.y-6, 12, 12);
+      } else {
+        for (let i=0;i<6;i++){
+          const ang = i*Math.PI/3;
+          const x = p.x + Math.cos(ang)*7, y = p.y + Math.sin(ang)*7;
+          if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+        }
+        ctx.closePath();
+      }
+      ctx.stroke();
+      ctx.beginPath(); ctx.arc(p.x, p.y, 2, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#cfe7ff'; ctx.font = '10px monospace'; ctx.textAlign='left';
+      ctx.fillText(n.id, p.x + 9, p.y + 4);
+    }
+
+    // Aircraft icon (rotated by heading), drawn at its world position.
+    const ap = project(state.lat, state.lon);
     ctx.save();
-    ctx.translate(vx, vy);
-    ctx.rotate(VOR.courseOBS*Math.PI/180);
-    ctx.strokeStyle = 'rgba(255,235,59,.6)'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(0,-200); ctx.lineTo(0,200); ctx.stroke();
-    ctx.restore();
-    ctx.restore();
-
-    // Aircraft (fixed at center, pointing up)
+    ctx.translate(ap.x, ap.y);
+    ctx.rotate(state.hdg*Math.PI/180);
     ctx.fillStyle = '#ffeb3b';
     ctx.beginPath();
-    ctx.moveTo(cx, cy-10); ctx.lineTo(cx-7, cy+8); ctx.lineTo(cx, cy+4); ctx.lineTo(cx+7, cy+8);
+    ctx.moveTo(0,-10); ctx.lineTo(-7,8); ctx.lineTo(0,4); ctx.lineTo(7,8);
     ctx.closePath(); ctx.fill();
+    ctx.restore();
 
-    // North indicator
+    // North indicator (north is always up in this map).
     ctx.save();
     ctx.translate(w-22, 22);
-    ctx.rotate(-state.hdg*Math.PI/180);
     ctx.strokeStyle = '#cfe7ff'; ctx.fillStyle = '#cfe7ff';
     ctx.beginPath(); ctx.moveTo(0,-10); ctx.lineTo(-5,8); ctx.lineTo(5,8); ctx.closePath(); ctx.fill();
     ctx.restore();
@@ -597,5 +624,6 @@
   requestAnimationFrame((t) => { state.lastWall = t; requestAnimationFrame(frame); });
 })();
 </script>
+<script type="module" src="js/main.js"></script>
 </body>
 </html>
