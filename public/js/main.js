@@ -128,21 +128,10 @@ overlay.innerHTML = `
     <h2><span>Active Mission</span><span class="badge" id="ifr-mission-id">—</span></h2>
     <div id="ifr-active">
       <div><span class="lbl">WP </span><span class="wp" id="ifr-wp">—</span> <span class="v" id="ifr-wp-pos">(0/0)</span></div>
-      <div><span class="lbl">BRG </span><span class="v" id="ifr-wp-brg">---</span>°  <span class="lbl">DIST </span><span class="v" id="ifr-wp-dist">--.-</span> NM</div>
+      <div><span class="lbl">BRG </span><span class="v" id="ifr-wp-brg">---</span>°  <span class="lbl">DIST </span><span class="v" id="ifr-wp-dist">--.-</span> NM  <span class="lbl">DME </span><span class="v" id="ifr-dme">---</span></div>
       <div><span class="lbl">ELP </span><span class="v" id="ifr-wp-elp">00:00</span></div>
     </div>
     <div style="margin-top:8px"><button id="ifr-abort" class="danger">Abort Mission</button></div>
-  </div>
-  <div class="pnl">
-    <h2><span>NAV 1</span><span class="badge" id="ifr-nav1-id">---</span></h2>
-    <div id="ifr-nav1">
-      <div class="freq-ctrl">
-        <button id="ifr-nav1-down" type="button">−</button>
-        <input id="ifr-nav1-freq" type="number" min="108.00" max="118.00" step="0.05" value="112.30" />
-        <button id="ifr-nav1-up" type="button">+</button>
-      </div>
-      <div class="dme"><span id="ifr-dme">---</span> <span style="font-size:11px;color:var(--dim)">NM</span></div>
-    </div>
   </div>
 `;
 document.body.appendChild(overlay);
@@ -257,6 +246,8 @@ async function loadData() {
     // (VOR/HSI, Autopilot). User can click the "✈ MISSIONS" header button.
     // Expose for the inline drawMap.
     window.__ifrNavaids = NAVAIDS;
+    // Re-tune NAV1 → VOR now that navaids are loaded.
+    if (window.__ifrTuneVorFromNav1) window.__ifrTuneVorFromNav1();
   } catch (err) {
     console.error('[ifr-pilot] failed to load data', err);
   }
@@ -331,8 +322,9 @@ function startMission(id) {
   // Tune NAV1 to first navaid for convenience.
   const first = NAVAIDS_BY_ID[m.waypoints[0].navaid];
   if (first && first.freq) {
-    const inp = document.getElementById('ifr-nav1-freq');
-    inp.value = first.freq.toFixed(2);
+    state.radio.nav1.active = parseFloat(first.freq);
+    if (window.__ifrTuneVorFromNav1) window.__ifrTuneVorFromNav1();
+    if (window.__ifrRadioRender) window.__ifrRadioRender();
   }
   runner.start(m, NAVAIDS_BY_ID, performance.now());
   document.getElementById('pnl-active').style.display = 'block';
@@ -364,14 +356,7 @@ function fmtElapsed(ms) {
 }
 
 // --- NAV1 + DME --------------------------------------------------------------
-const nav1FreqEl = document.getElementById('ifr-nav1-freq');
-function nav1Freq() { return parseFloat(nav1FreqEl.value); }
-function bumpFreq(d) {
-  const v = (parseFloat(nav1FreqEl.value) || 108) + d;
-  nav1FreqEl.value = (Math.round(v * 100) / 100).toFixed(2);
-}
-document.getElementById('ifr-nav1-up').addEventListener('click', () => bumpFreq(0.05));
-document.getElementById('ifr-nav1-down').addEventListener('click', () => bumpFreq(-0.05));
+function nav1Freq() { return state.radio.nav1.active; }
 
 // --- Per-frame update --------------------------------------------------------
 function update() {
@@ -382,12 +367,12 @@ function update() {
   }
   // Mission tick.
   runner.tick(state, performance.now());
-  // DME readout.
+  // DME readout in active-mission HUD.
   const f = nav1Freq();
   const station = NAVAIDS.find((s) => Math.abs(s.freq - f) <= 0.011 && (s.type === 'VORDME' || s.type === 'ILS'));
-  document.getElementById('ifr-nav1-id').textContent = station ? station.id : '---';
   const dme = dmeReading(state, NAVAIDS, f);
-  document.getElementById('ifr-dme').textContent = dme == null ? '---' : dme.toFixed(1);
+  const dmeEl = document.getElementById('ifr-dme');
+  if (dmeEl) dmeEl.textContent = dme == null ? '---' : dme.toFixed(1);
   // Active waypoint HUD.
   if (runner.status === 'active') {
     const wp = runner.activeWaypoint();
