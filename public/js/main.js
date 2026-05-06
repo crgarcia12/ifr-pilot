@@ -45,8 +45,11 @@ function shiftCenter(dxPx, dyPx) {
   const rect = c.getBoundingClientRect();
   const pxPerNm = Math.min(rect.width, rect.height) / 2 / state.map.scaleNm;
   if (pxPerNm <= 0) return;
-  // Pixel right → world east; pixel down → world south. Convert px → NM → degrees.
-  const dN = -dyPx / pxPerNm;
+  // Pixel right → world east; pixel down → world south. The map is north-up,
+  // so dragging the cursor down should pan the world down with it (the viewport
+  // reveals more of the south); same for dragging right (reveals more east).
+  // i.e. centerLat decreases as dy increases, centerLon decreases as dx increases.
+  const dN = dyPx / pxPerNm;
   const dE = -dxPx / pxPerNm;
   if (state.map.follow) {
     // Switch to free-pan mode the first time the user pans.
@@ -250,10 +253,8 @@ async function loadData() {
     NAVAIDS_BY_ID = Object.fromEntries(NAVAIDS.map((x) => [x.id, x]));
     MISSIONS = m.missions || [];
     renderMissions();
-    // Auto-show the briefing splash on first load if there are missions.
-    if (MISSIONS.length) {
-      document.getElementById('ifr-briefing').classList.add('show');
-    }
+    // Don't auto-open the briefing splash — it covers the cockpit panels
+    // (VOR/HSI, Autopilot). User can click the "✈ MISSIONS" header button.
     // Expose for the inline drawMap.
     window.__ifrNavaids = NAVAIDS;
   } catch (err) {
