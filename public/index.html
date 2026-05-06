@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>IFR Pilot</title>
+<style>
+  :root{
+    --bg:#0a0e14; --panel:#101822; --ink:#cfe7ff; --dim:#5b7a99;
+    --accent:#00ff9d; --warn:#ffb547; --danger:#ff5c5c; --hud:#1b2a3a;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;overflow:hidden}
+  #app{position:fixed;inset:0;display:grid;grid-template-rows:1fr auto}
+  canvas{display:block;width:100%;height:100%;background:linear-gradient(#0a0e14 0%,#15243a 55%,#3b2a1a 56%,#1a0f08 100%)}
+  .hud{position:absolute;top:8px;left:8px;display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;z-index:5}
+  .panel{background:rgba(16,24,34,.85);border:1px solid #1f2f44;padding:8px 10px;border-radius:6px;font-size:12px;line-height:1.4;backdrop-filter:blur(2px)}
+  .panel b{color:var(--accent)}
+  .vel{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);display:flex;gap:6px;background:rgba(16,24,34,.85);border:1px solid #1f2f44;padding:6px 8px;border-radius:8px;z-index:5}
+  .vel button{
+    appearance:none;border:1px solid #28405c;background:#0e1620;color:var(--ink);
+    font-family:inherit;font-size:12px;padding:6px 10px;border-radius:5px;cursor:pointer;min-width:42px
+  }
+  .vel button:hover{border-color:#3a5a82}
+  .vel button.active{background:var(--accent);color:#001b10;border-color:var(--accent);font-weight:700}
+  .legend{position:absolute;bottom:8px;right:8px;font-size:11px;color:var(--dim)}
+  .legend kbd{background:#0e1620;border:1px solid #28405c;border-bottom-width:2px;border-radius:3px;padding:1px 5px;color:var(--ink)}
+  #toast{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.7);padding:10px 16px;border-radius:6px;color:var(--accent);font-size:14px;display:none;z-index:9}
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="cv" width="1280" height="720" aria-label="IFR Pilot scene"></canvas>
+</div>
+
+<div class="hud" id="hud">
+  <div class="panel" id="pfd">
+    <div>HDG <b id="hdg">000</b>°  ALT <b id="alt">3000</b> ft</div>
+    <div>IAS <b id="ias">120</b> kt  V/S <b id="vs">+0</b> fpm</div>
+    <div>POS <b id="pos">47.4500, -122.3000</b></div>
+    <div>SIM <b id="rate">1x</b>  T <b id="clk">00:00:00</b></div>
+  </div>
+  <div class="panel">
+    <div><kbd>←</kbd>/<kbd>→</kbd> roll &nbsp; <kbd>↑</kbd>/<kbd>↓</kbd> pitch</div>
+    <div><kbd>A</kbd>/<kbd>Z</kbd> throttle &nbsp; <kbd>[</kbd>/<kbd>]</kbd> sim-rate</div>
+    <div><kbd>P</kbd> pause</div>
+  </div>
+</div>
+
+<div class="vel" id="vel" role="toolbar" aria-label="Simulation rate">
+  <!-- buttons injected by JS -->
+</div>
+
+<div class="legend">IFR Pilot · v0.1</div>
+<div id="toast"></div>
+
+<script>
+(function(){
+  'use strict';
+
+  // ---- Constants -----------------------------------------------------------
+  const RATES = [1, 2, 4, 8, 16, 32];
+  const STORAGE_KEY = 'ifrPilot.simRate';
+  const MAX_STEP = 1/30; // safe physics fixed-step (seconds of sim time)
+  const FT_PER_NM = 6076.12;
+
+  // ---- State ---------------------------------------------------------------
+  const state = {
+    lat: 47.45, lon: -122.30,
+    alt: 3000,           // ft
+    hdg: 90,             // deg
+    pitch: 0,            // deg
+    roll: 0,             // deg
+    ias: 120,            // kt (treated as ground speed for sim)
+    vs: 0,               // fpm
+    throttle: 0.6,
+    paused: false,
+    simRate: loadRate(),
+    simTime: 0,          // seconds of simulated time elapsed
+    lastWall: 0
+  };
+
+  function loadRate(){
+    try{
+      const v = parseFloat(localStorage.getItem(STORAGE_KEY));
+      if (RATES.includes(v)) return v;
+    } catch(_){}
+    return 1;
+  }
+  function saveRate(r){
+    try { localStorage.setItem(STORAGE_KEY, String(r)); } catch(_){}
+  }
+
+  // ---- UI: velocity control -----------------------------------------------
+  const velEl = document.getElementById('vel');
+  function renderVel(){
+    velEl.innerHTML = '';
+    for (const r of RATES){
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = r + 'x';
+      b.dataset.rate = String(r);
+      b.setAttribute('aria-pressed', String(r === state.simRate));
+      if (r === state.simRate) b.classList.add('active');
+      b.addEventListener('click', () => setRate(r));
+      velEl.appendChild(b);
+    }
+  }
+  function setRate(r){
+    if (!RATES.includes(r)) return;
+    state.simRate = r;
+    saveRate(r);
+    renderVel();
+    showToast(r + 'x');
+  }
+  function cycleRate(dir){
+    const i = RATES.indexOf(state.simRate);
+    const j = Math.max(0, Math.min(RATES.length - 1, i + dir));
+    setRate(RATES[j]);
+  }
+
+  let toastT = 0;
+  const toastEl = document.getElementById('toast');
+  function showToast(t){
+    toastEl.textContent = t;
+    toastEl.style.display = 'block';
+    clearTimeout(toastT);
+    toastT = setTimeout(() => toastEl.style.display = 'none', 700);
+  }
+
+  // ---- Input ---------------------------------------------------------------
+  const keys = Object.create(null);
+  window.addEventListener('keydown', (e) => {
+    keys[e.key.toLowerCase()] = true;
+    if (e.key === ']') { cycleRate(+1); e.preventDefault(); }
+    else if (e.key === '[') { cycleRate(-1); e.preventDefault(); }
+    else if (e.key.toLowerCase() === 'p') { state.paused = !state.paused; showToast(state.paused ? 'PAUSED' : 'RESUMED'); }
+  });
+  window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
+
+  // ---- Physics -------------------------------------------------------------
+  // One physics step advances `dt` seconds of simulated time.
+  function step(dt){
+    // Pilot inputs (smoothed)
+    const rollRate = 35;   // deg/s
+    const pitchRate = 15;  // deg/s
+    const thrRate = 0.4;   // /s
+    if (keys['arrowleft'])  state.roll  = clamp(state.roll  - rollRate*dt, -45, 45);
+    if (keys['arrowright']) state.roll  = clamp(state.roll  + rollRate*dt, -45, 45);
+    if (keys['arrowup'])    state.pitch = clamp(state.pitch + pitchRate*dt, -15, 15);
+    if (keys['arrowdown'])  state.pitch = clamp(state.pitch - pitchRate*dt, -15, 15);
+    if (keys['a'])          state.throttle = clamp(state.throttle + thrRate*dt, 0, 1);
+    if (keys['z'])          state.throttle = clamp(state.throttle - thrRate*dt, 0, 1);
+
+    // Auto-level when no input (very mild)
+    if (!keys['arrowleft'] && !keys['arrowright']) state.roll  *= Math.max(0, 1 - 0.5*dt);
+
+    // Simple coordinated turn: heading changes proportional to bank
+    const turnRate = 3.0 * Math.tan(state.roll * Math.PI/180); // deg/s at typical IAS
+    state.hdg = (state.hdg + turnRate*dt + 360) % 360;
+
+    // Climb/descend from pitch
+    const targetVs = state.pitch * 100; // 1 deg pitch ≈ 100 fpm at this fidelity
+    state.vs += (targetVs - state.vs) * Math.min(1, 2*dt);
+    state.alt = Math.max(0, state.alt + state.vs * (dt/60));
+
+    // Airspeed from throttle (bounded, simple lag)
+    const targetIas = 70 + state.throttle * 110; // 70..180 kt
+    state.ias += (targetIas - state.ias) * Math.min(1, 0.5*dt);
+
+    // Position update — flat-earth conversion, fine for this fidelity
+    const groundSpeedNmPerSec = state.ias / 3600;
+    const distNm = groundSpeedNmPerSec * dt;
+    const hdgRad = state.hdg * Math.PI / 180;
+    const dLat = (distNm * Math.cos(hdgRad)) / 60; // 1 deg lat ≈ 60 NM
+    const dLon = (distNm * Math.sin(hdgRad)) / (60 * Math.max(0.001, Math.cos(state.lat * Math.PI/180)));
+    state.lat += dLat;
+    state.lon += dLon;
+
+    state.simTime += dt;
+  }
+
+  function clamp(v, lo, hi){ return v < lo ? lo : v > hi ? hi : v; }
+
+  // ---- Render --------------------------------------------------------------
+  const cv = document.getElementById('cv');
+  const ctx = cv.getContext('2d');
+
+  function resize(){
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    cv.width  = Math.floor(window.innerWidth * dpr);
+    cv.height = Math.floor(window.innerHeight * dpr);
+    cv.style.width = window.innerWidth + 'px';
+    cv.style.height = window.innerHeight + 'px';
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  window.addEventListener('resize', resize); resize();
+
+  function drawHorizon(){
+    const W = window.innerWidth, H = window.innerHeight;
+    ctx.save();
+    ctx.translate(W/2, H/2);
+    ctx.rotate(-state.roll * Math.PI/180);
+    const horizonY = state.pitch * 6; // px per deg pitch
+    // sky
+    const sky = ctx.createLinearGradient(0,-H,0,horizonY);
+    sky.addColorStop(0,'#0a1830'); sky.addColorStop(1,'#3b6ea8');
+    ctx.fillStyle = sky;
+    ctx.fillRect(-W,-H, W*2, H + horizonY);
+    // ground
+    const gnd = ctx.createLinearGradient(0,horizonY,0,H);
+    gnd.addColorStop(0,'#5a3a1d'); gnd.addColorStop(1,'#2a1808');
+    ctx.fillStyle = gnd;
+    ctx.fillRect(-W, horizonY, W*2, H);
+    // horizon line
+    ctx.strokeStyle = '#cfe7ff'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(-W, horizonY); ctx.lineTo(W, horizonY); ctx.stroke();
+    // pitch ladder
+    ctx.strokeStyle = 'rgba(207,231,255,.7)'; ctx.lineWidth = 1;
+    ctx.font = '11px monospace'; ctx.fillStyle = '#cfe7ff'; ctx.textAlign='center';
+    for (let p=-30; p<=30; p+=5){
+      if (p===0) continue;
+      const y = horizonY - p*6;
+      const w = p%10===0 ? 70 : 40;
+      ctx.beginPath(); ctx.moveTo(-w,y); ctx.lineTo(w,y); ctx.stroke();
+      if (p%10===0) ctx.fillText(String(p), -w-14, y+4);
+    }
+    ctx.restore();
+
+    // Aircraft reference (fixed)
+    ctx.strokeStyle = '#ffeb3b'; ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(W/2-60, H/2); ctx.lineTo(W/2-20, H/2);
+    ctx.moveTo(W/2+20, H/2); ctx.lineTo(W/2+60, H/2);
+    ctx.moveTo(W/2-6, H/2); ctx.arc(W/2, H/2, 6, 0, Math.PI*2);
+    ctx.stroke();
+
+    // Heading tape
+    drawHeadingTape(W, H);
+  }
+
+  function drawHeadingTape(W, H){
+    const cy = 30;
+    ctx.fillStyle = 'rgba(0,0,0,.45)';
+    ctx.fillRect(W/2-160, 8, 320, 36);
+    ctx.strokeStyle = '#cfe7ff'; ctx.fillStyle = '#cfe7ff';
+    ctx.font = '12px monospace'; ctx.textAlign = 'center';
+    for (let d=-60; d<=60; d+=10){
+      const h = Math.round((state.hdg + d + 360)) % 360;
+      const x = W/2 + d*4;
+      const major = h%30===0;
+      ctx.beginPath();
+      ctx.moveTo(x, cy-8); ctx.lineTo(x, cy + (major?8:4)); ctx.stroke();
+      if (major) ctx.fillText(String(h).padStart(3,'0'), x, cy+22);
+    }
+    // index
+    ctx.fillStyle = '#ffeb3b';
+    ctx.beginPath(); ctx.moveTo(W/2, cy+10); ctx.lineTo(W/2-6, cy+18); ctx.lineTo(W/2+6, cy+18); ctx.closePath(); ctx.fill();
+  }
+
+  // ---- HUD text ------------------------------------------------------------
+  const hudEls = {
+    hdg: document.getElementById('hdg'),
+    alt: document.getElementById('alt'),
+    ias: document.getElementById('ias'),
+    vs:  document.getElementById('vs'),
+    pos: document.getElementById('pos'),
+    rate:document.getElementById('rate'),
+    clk: document.getElementById('clk')
+  };
+  function fmt(n, w){ return String(Math.round(n)).padStart(w,'0'); }
+  function fmtClk(s){
+    s = Math.floor(s);
+    const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), ss = s%60;
+    return fmt(h,2)+':'+fmt(m,2)+':'+fmt(ss,2);
+  }
+  function updateHud(){
+    hudEls.hdg.textContent = fmt(state.hdg,3);
+    hudEls.alt.textContent = fmt(state.alt,1);
+    hudEls.ias.textContent = fmt(state.ias,1);
+    hudEls.vs.textContent  = (state.vs>=0?'+':'') + fmt(state.vs,1);
+    hudEls.pos.textContent = state.lat.toFixed(4)+', '+state.lon.toFixed(4);
+    hudEls.rate.textContent = state.simRate + 'x';
+    hudEls.clk.textContent = fmtClk(state.simTime);
+  }
+
+  // ---- Main loop -----------------------------------------------------------
+  function frame(now){
+    const wallDt = Math.min(0.1, (state.lastWall ? (now - state.lastWall)/1000 : 1/60));
+    state.lastWall = now;
+
+    if (!state.paused){
+      // Sub-step the physics so each step is <= MAX_STEP of sim time.
+      const simDt = wallDt * state.simRate;
+      const steps = Math.max(1, Math.ceil(simDt / MAX_STEP));
+      const sub = simDt / steps;
+      for (let i=0;i<steps;i++) step(sub);
+    }
+
+    drawHorizon();
+    updateHud();
+    requestAnimationFrame(frame);
+  }
+
+  // ---- Boot ---------------------------------------------------------------
+  renderVel();
+  // Expose a tiny test hook for headless tests / cucumber probes
+  window.__ifrPilot = {
+    state, RATES, setRate, cycleRate,
+    step, // for unit-style probes
+  };
+  requestAnimationFrame((t) => { state.lastWall = t; requestAnimationFrame(frame); });
+})();
+</script>
+</body>
+</html>
