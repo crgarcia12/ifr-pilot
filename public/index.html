@@ -6,100 +6,181 @@
 <title>IFR Pilot</title>
 <style>
   :root{
-    --bg:#0a0e14; --panel:#101822; --ink:#cfe7ff; --dim:#5b7a99;
-    --accent:#00ff9d; --warn:#ffb547; --danger:#ff5c5c; --hud:#1b2a3a;
+    --bg:#06090d; --panel:#0d141d; --ink:#cfe7ff; --dim:#5b7a99;
+    --accent:#00ff9d; --warn:#ffb547; --danger:#ff5c5c; --edge:#1f2f44;
   }
   *{box-sizing:border-box}
   html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;overflow:hidden}
-  #app{position:fixed;inset:0;display:grid;grid-template-rows:1fr auto}
-  canvas{display:block;width:100%;height:100%;background:linear-gradient(#0a0e14 0%,#15243a 55%,#3b2a1a 56%,#1a0f08 100%)}
-  .hud{position:absolute;top:8px;left:8px;display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;z-index:5}
-  .panel{background:rgba(16,24,34,.85);border:1px solid #1f2f44;padding:8px 10px;border-radius:6px;font-size:12px;line-height:1.4;backdrop-filter:blur(2px)}
-  .panel b{color:var(--accent)}
-  .vel{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);display:flex;gap:6px;background:rgba(16,24,34,.85);border:1px solid #1f2f44;padding:6px 8px;border-radius:8px;z-index:5}
+  #app{
+    position:fixed;inset:0;display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    grid-template-rows:auto 1fr auto;
+    gap:8px;padding:8px;
+  }
+  header{
+    grid-column:1 / -1;display:flex;align-items:center;gap:12px;
+    background:var(--panel);border:1px solid var(--edge);border-radius:8px;padding:8px 12px;
+  }
+  header h1{margin:0;font-size:14px;letter-spacing:.15em;color:var(--accent)}
+  header .pfd{display:flex;gap:18px;font-size:12px;color:var(--ink);flex-wrap:wrap}
+  header .pfd b{color:var(--accent)}
+  .inst{
+    background:var(--panel);border:1px solid var(--edge);border-radius:8px;
+    position:relative;overflow:hidden;display:flex;flex-direction:column;
+  }
+  .inst .title{
+    font-size:11px;letter-spacing:.2em;color:var(--dim);
+    padding:6px 10px;border-bottom:1px solid var(--edge);text-transform:uppercase;
+    display:flex;justify-content:space-between;align-items:center;
+  }
+  .inst .title .badge{color:var(--accent);font-weight:700}
+  .inst canvas{display:block;flex:1;width:100%;height:100%;background:#070b10}
+  footer{
+    grid-column:1 / -1;display:flex;justify-content:center;align-items:center;gap:12px;
+    background:var(--panel);border:1px solid var(--edge);border-radius:8px;padding:8px;
+  }
+  .vel{display:flex;gap:6px}
   .vel button{
     appearance:none;border:1px solid #28405c;background:#0e1620;color:var(--ink);
     font-family:inherit;font-size:12px;padding:6px 10px;border-radius:5px;cursor:pointer;min-width:42px
   }
   .vel button:hover{border-color:#3a5a82}
   .vel button.active{background:var(--accent);color:#001b10;border-color:var(--accent);font-weight:700}
-  .legend{position:absolute;bottom:8px;right:8px;font-size:11px;color:var(--dim)}
+  .legend{font-size:11px;color:var(--dim)}
   .legend kbd{background:#0e1620;border:1px solid #28405c;border-bottom-width:2px;border-radius:3px;padding:1px 5px;color:var(--ink)}
-  #toast{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.7);padding:10px 16px;border-radius:6px;color:var(--accent);font-size:14px;display:none;z-index:9}
+  #toast{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.75);padding:10px 16px;border-radius:6px;color:var(--accent);font-size:14px;display:none;z-index:9}
+  /* Autopilot panel */
+  #ap-panel{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:10px;font-size:12px}
+  #ap-panel .row{display:flex;flex-direction:column;gap:4px;background:#0a121b;border:1px solid var(--edge);border-radius:6px;padding:6px}
+  #ap-panel label{color:var(--dim);font-size:10px;letter-spacing:.15em}
+  #ap-panel .v{font-size:14px;color:var(--ink);font-weight:600}
+  #ap-panel .v.on{color:var(--accent)}
+  #ap-panel button{
+    appearance:none;border:1px solid #28405c;background:#0e1620;color:var(--ink);
+    font-family:inherit;font-size:11px;padding:4px 6px;border-radius:4px;cursor:pointer
+  }
+  #ap-panel button.on{background:var(--accent);color:#001b10;border-color:var(--accent);font-weight:700}
+  #ap-panel input{
+    background:#0a121b;border:1px solid var(--edge);color:var(--ink);font-family:inherit;
+    font-size:12px;padding:3px 4px;border-radius:4px;width:100%
+  }
+  #ap-panel .ctrl{display:flex;gap:4px;align-items:center}
+  @media (max-width: 900px){
+    #app{grid-template-columns:1fr 1fr;}
+    #ai{grid-column:1 / -1;}
+  }
 </style>
 </head>
 <body>
 <div id="app">
-  <canvas id="cv" width="1280" height="720" aria-label="IFR Pilot scene"></canvas>
+  <header>
+    <h1>IFR&nbsp;PILOT</h1>
+    <div class="pfd">
+      <span>HDG <b id="hdg">000</b>°</span>
+      <span>ALT <b id="alt">3000</b> ft</span>
+      <span>IAS <b id="ias">120</b> kt</span>
+      <span>V/S <b id="vs">+0</b> fpm</span>
+      <span>POS <b id="pos">47.4500, -122.3000</b></span>
+      <span>SIM <b id="rate">1x</b></span>
+      <span>T <b id="clk">00:00:00</b></span>
+    </div>
+  </header>
+
+  <section class="inst" id="ai">
+    <div class="title"><span>Attitude Indicator</span><span class="badge">AI</span></div>
+    <canvas id="cv-ai"></canvas>
+  </section>
+
+  <section class="inst" id="vor">
+    <div class="title"><span>VOR / HSI</span><span class="badge" id="vor-id">SEA 117.80</span></div>
+    <canvas id="cv-vor"></canvas>
+  </section>
+
+  <section class="inst" id="map">
+    <div class="title"><span>Moving Map</span><span class="badge" id="map-scale">5 NM</span></div>
+    <canvas id="cv-map"></canvas>
+  </section>
+
+  <section class="inst" id="ap" style="grid-column:1 / -1">
+    <div class="title"><span>Autopilot</span><span class="badge" id="ap-master">OFF</span></div>
+    <div id="ap-panel">
+      <div class="row">
+        <label>MASTER</label>
+        <button id="ap-toggle">AP OFF</button>
+      </div>
+      <div class="row">
+        <label>HDG MODE</label>
+        <div class="ctrl">
+          <button id="ap-hdg">HDG</button>
+          <input id="ap-hdg-val" type="number" min="0" max="359" value="090" />
+        </div>
+      </div>
+      <div class="row">
+        <label>ALT MODE</label>
+        <div class="ctrl">
+          <button id="ap-alt">ALT</button>
+          <input id="ap-alt-val" type="number" min="0" max="40000" step="100" value="3000" />
+        </div>
+      </div>
+      <div class="row">
+        <label>NAV MODE</label>
+        <div class="ctrl">
+          <button id="ap-nav">NAV</button>
+          <span class="v" id="ap-nav-status">—</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="vel" id="vel" role="toolbar" aria-label="Simulation rate"></div>
+    <div class="legend">
+      <kbd>←</kbd><kbd>→</kbd> roll · <kbd>↑</kbd><kbd>↓</kbd> pitch ·
+      <kbd>A</kbd>/<kbd>Z</kbd> throttle · <kbd>[</kbd>/<kbd>]</kbd> sim-rate · <kbd>P</kbd> pause
+    </div>
+  </footer>
 </div>
 
-<div class="hud" id="hud">
-  <div class="panel" id="pfd">
-    <div>HDG <b id="hdg">000</b>°  ALT <b id="alt">3000</b> ft</div>
-    <div>IAS <b id="ias">120</b> kt  V/S <b id="vs">+0</b> fpm</div>
-    <div>POS <b id="pos">47.4500, -122.3000</b></div>
-    <div>SIM <b id="rate">1x</b>  T <b id="clk">00:00:00</b></div>
-  </div>
-  <div class="panel">
-    <div><kbd>←</kbd>/<kbd>→</kbd> roll &nbsp; <kbd>↑</kbd>/<kbd>↓</kbd> pitch</div>
-    <div><kbd>A</kbd>/<kbd>Z</kbd> throttle &nbsp; <kbd>[</kbd>/<kbd>]</kbd> sim-rate</div>
-    <div><kbd>P</kbd> pause</div>
-  </div>
-</div>
-
-<div class="vel" id="vel" role="toolbar" aria-label="Simulation rate">
-  <!-- buttons injected by JS -->
-</div>
-
-<div class="legend">IFR Pilot · v0.1</div>
 <div id="toast"></div>
 
 <script>
 (function(){
   'use strict';
 
-  // ---- Constants -----------------------------------------------------------
+  // ===== Constants =========================================================
   const RATES = [1, 2, 4, 8, 16, 32];
   const STORAGE_KEY = 'ifrPilot.simRate';
-  const MAX_STEP = 1/30; // safe physics fixed-step (seconds of sim time)
-  const FT_PER_NM = 6076.12;
+  const MAX_STEP = 1/30;
 
-  // ---- State ---------------------------------------------------------------
+  // VOR station near starting point (Seattle VORTAC, fictionalized)
+  const VOR = { id: 'SEA', freq: '117.80', lat: 47.435, lon: -122.309, courseOBS: 90 };
+
+  // ===== State =============================================================
   const state = {
     lat: 47.45, lon: -122.30,
-    alt: 3000,           // ft
-    hdg: 90,             // deg
-    pitch: 0,            // deg
-    roll: 0,             // deg
-    ias: 120,            // kt (treated as ground speed for sim)
-    vs: 0,               // fpm
-    throttle: 0.6,
+    alt: 3000, hdg: 90, pitch: 0, roll: 0,
+    ias: 120, vs: 0, throttle: 0.6,
     paused: false,
     simRate: loadRate(),
-    simTime: 0,          // seconds of simulated time elapsed
-    lastWall: 0
+    simTime: 0,
+    lastWall: 0,
+    ap: { master: false, hdgOn: false, altOn: false, navOn: false,
+          hdgTarget: 90, altTarget: 3000, obs: 90 }
   };
 
   function loadRate(){
-    try{
-      const v = parseFloat(localStorage.getItem(STORAGE_KEY));
-      if (RATES.includes(v)) return v;
-    } catch(_){}
+    try{ const v = parseFloat(localStorage.getItem(STORAGE_KEY)); if (RATES.includes(v)) return v; }catch(_){}
     return 1;
   }
-  function saveRate(r){
-    try { localStorage.setItem(STORAGE_KEY, String(r)); } catch(_){}
-  }
+  function saveRate(r){ try{ localStorage.setItem(STORAGE_KEY, String(r)); }catch(_){ } }
 
-  // ---- UI: velocity control -----------------------------------------------
+  // ===== Velocity buttons ==================================================
   const velEl = document.getElementById('vel');
   function renderVel(){
     velEl.innerHTML = '';
     for (const r of RATES){
       const b = document.createElement('button');
-      b.type = 'button';
-      b.textContent = r + 'x';
-      b.dataset.rate = String(r);
+      b.type = 'button'; b.textContent = r + 'x'; b.dataset.rate = String(r);
       b.setAttribute('aria-pressed', String(r === state.simRate));
       if (r === state.simRate) b.classList.add('active');
       b.addEventListener('click', () => setRate(r));
@@ -108,29 +189,25 @@
   }
   function setRate(r){
     if (!RATES.includes(r)) return;
-    state.simRate = r;
-    saveRate(r);
-    renderVel();
-    showToast(r + 'x');
+    state.simRate = r; saveRate(r); renderVel(); showToast(r + 'x');
   }
-  function cycleRate(dir){
+  function cycleRate(d){
     const i = RATES.indexOf(state.simRate);
-    const j = Math.max(0, Math.min(RATES.length - 1, i + dir));
-    setRate(RATES[j]);
+    setRate(RATES[Math.max(0, Math.min(RATES.length-1, i+d))]);
   }
 
+  // ===== Toast =============================================================
   let toastT = 0;
   const toastEl = document.getElementById('toast');
   function showToast(t){
-    toastEl.textContent = t;
-    toastEl.style.display = 'block';
-    clearTimeout(toastT);
-    toastT = setTimeout(() => toastEl.style.display = 'none', 700);
+    toastEl.textContent = t; toastEl.style.display = 'block';
+    clearTimeout(toastT); toastT = setTimeout(() => toastEl.style.display = 'none', 700);
   }
 
-  // ---- Input ---------------------------------------------------------------
+  // ===== Input =============================================================
   const keys = Object.create(null);
   window.addEventListener('keydown', (e) => {
+    if (e.target && /input|textarea/i.test(e.target.tagName)) return;
     keys[e.key.toLowerCase()] = true;
     if (e.key === ']') { cycleRate(+1); e.preventDefault(); }
     else if (e.key === '[') { cycleRate(-1); e.preventDefault(); }
@@ -138,13 +215,43 @@
   });
   window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
 
-  // ---- Physics -------------------------------------------------------------
-  // One physics step advances `dt` seconds of simulated time.
+  // ===== Autopilot wiring ==================================================
+  const apEls = {
+    master: document.getElementById('ap-master'),
+    toggle: document.getElementById('ap-toggle'),
+    hdg: document.getElementById('ap-hdg'),
+    hdgVal: document.getElementById('ap-hdg-val'),
+    alt: document.getElementById('ap-alt'),
+    altVal: document.getElementById('ap-alt-val'),
+    nav: document.getElementById('ap-nav'),
+    navStatus: document.getElementById('ap-nav-status')
+  };
+  function syncAp(){
+    apEls.master.textContent = state.ap.master ? 'ON' : 'OFF';
+    apEls.master.style.color = state.ap.master ? 'var(--accent)' : 'var(--dim)';
+    apEls.toggle.textContent = 'AP ' + (state.ap.master ? 'ON' : 'OFF');
+    apEls.toggle.classList.toggle('on', state.ap.master);
+    apEls.hdg.classList.toggle('on', state.ap.hdgOn);
+    apEls.alt.classList.toggle('on', state.ap.altOn);
+    apEls.nav.classList.toggle('on', state.ap.navOn);
+  }
+  apEls.toggle.addEventListener('click', () => { state.ap.master = !state.ap.master; syncAp(); });
+  apEls.hdg.addEventListener('click', () => { state.ap.hdgOn = !state.ap.hdgOn; if (state.ap.hdgOn) state.ap.navOn = false; syncAp(); });
+  apEls.alt.addEventListener('click', () => { state.ap.altOn = !state.ap.altOn; syncAp(); });
+  apEls.nav.addEventListener('click', () => { state.ap.navOn = !state.ap.navOn; if (state.ap.navOn) state.ap.hdgOn = false; syncAp(); });
+  apEls.hdgVal.addEventListener('change', () => { state.ap.hdgTarget = ((parseFloat(apEls.hdgVal.value)||0)%360+360)%360; });
+  apEls.altVal.addEventListener('change', () => { state.ap.altTarget = Math.max(0, parseFloat(apEls.altVal.value)||0); });
+  syncAp();
+
+  // ===== Physics step =====================================================
+  function clamp(v, lo, hi){ return v<lo?lo:v>hi?hi:v; }
+  function angleDiff(a, b){ // smallest signed (a-b)
+    let d = ((a-b+540)%360)-180; return d;
+  }
+
   function step(dt){
-    // Pilot inputs (smoothed)
-    const rollRate = 35;   // deg/s
-    const pitchRate = 15;  // deg/s
-    const thrRate = 0.4;   // /s
+    // Manual inputs
+    const rollRate = 35, pitchRate = 15, thrRate = 0.4;
     if (keys['arrowleft'])  state.roll  = clamp(state.roll  - rollRate*dt, -45, 45);
     if (keys['arrowright']) state.roll  = clamp(state.roll  + rollRate*dt, -45, 45);
     if (keys['arrowup'])    state.pitch = clamp(state.pitch + pitchRate*dt, -15, 15);
@@ -152,128 +259,305 @@
     if (keys['a'])          state.throttle = clamp(state.throttle + thrRate*dt, 0, 1);
     if (keys['z'])          state.throttle = clamp(state.throttle - thrRate*dt, 0, 1);
 
-    // Auto-level when no input (very mild)
-    if (!keys['arrowleft'] && !keys['arrowright']) state.roll  *= Math.max(0, 1 - 0.5*dt);
+    // Autopilot (mild authority, will not fight strong stick input)
+    if (state.ap.master){
+      // Heading hold or NAV
+      let hdgTarget = state.ap.hdgTarget;
+      if (state.ap.navOn){
+        // Steer toward VOR radial (course OBS) intercept
+        const brg = bearingTo(state.lat, state.lon, VOR.lat, VOR.lon);
+        const cdi = vorCdi(); // -1..+1 (deflection)
+        // Target a 30° intercept reduced as CDI centers
+        const intercept = clamp(cdi * 30, -45, 45);
+        hdgTarget = (VOR.courseOBS + intercept + 360) % 360;
+        // If we're past the station, just track outbound on the course
+        const dist = haversineNm(state.lat, state.lon, VOR.lat, VOR.lon);
+        if (dist < 0.5) hdgTarget = VOR.courseOBS;
+        apEls.navStatus.textContent = 'CDI ' + cdi.toFixed(2) + '  ' + dist.toFixed(1) + ' NM';
+      } else {
+        apEls.navStatus.textContent = '—';
+      }
+      if (state.ap.hdgOn || state.ap.navOn){
+        const err = angleDiff(hdgTarget, state.hdg);
+        const targetRoll = clamp(err * 1.0, -25, 25);
+        state.roll += (targetRoll - state.roll) * Math.min(1, 1.5*dt);
+      }
+      if (state.ap.altOn){
+        const errFt = state.ap.altTarget - state.alt;
+        const targetVs = clamp(errFt * 6, -1500, 1500); // fpm
+        const targetPitch = clamp(targetVs / 100, -10, 10);
+        state.pitch += (targetPitch - state.pitch) * Math.min(1, 1.5*dt);
+      }
+    } else {
+      apEls.navStatus.textContent = '—';
+    }
 
-    // Simple coordinated turn: heading changes proportional to bank
-    const turnRate = 3.0 * Math.tan(state.roll * Math.PI/180); // deg/s at typical IAS
-    state.hdg = (state.hdg + turnRate*dt + 360) % 360;
+    // Auto-level when no roll input AND AP is not commanding
+    if (!keys['arrowleft'] && !keys['arrowright'] && !state.ap.master)
+      state.roll *= Math.max(0, 1 - 0.5*dt);
 
-    // Climb/descend from pitch
-    const targetVs = state.pitch * 100; // 1 deg pitch ≈ 100 fpm at this fidelity
+    // Coordinated turn -> heading
+    const turn = 3.0 * Math.tan(state.roll * Math.PI/180);
+    state.hdg = (state.hdg + turn*dt + 360) % 360;
+
+    // Climb / descend
+    const targetVs = state.pitch * 100;
     state.vs += (targetVs - state.vs) * Math.min(1, 2*dt);
     state.alt = Math.max(0, state.alt + state.vs * (dt/60));
 
-    // Airspeed from throttle (bounded, simple lag)
-    const targetIas = 70 + state.throttle * 110; // 70..180 kt
+    // Airspeed
+    const targetIas = 70 + state.throttle * 110;
     state.ias += (targetIas - state.ias) * Math.min(1, 0.5*dt);
 
-    // Position update — flat-earth conversion, fine for this fidelity
-    const groundSpeedNmPerSec = state.ias / 3600;
-    const distNm = groundSpeedNmPerSec * dt;
+    // Position (flat-earth, fine for this fidelity)
+    const distNm = (state.ias / 3600) * dt;
     const hdgRad = state.hdg * Math.PI / 180;
-    const dLat = (distNm * Math.cos(hdgRad)) / 60; // 1 deg lat ≈ 60 NM
+    const dLat = (distNm * Math.cos(hdgRad)) / 60;
     const dLon = (distNm * Math.sin(hdgRad)) / (60 * Math.max(0.001, Math.cos(state.lat * Math.PI/180)));
-    state.lat += dLat;
-    state.lon += dLon;
-
+    state.lat += dLat; state.lon += dLon;
     state.simTime += dt;
   }
 
-  function clamp(v, lo, hi){ return v < lo ? lo : v > hi ? hi : v; }
-
-  // ---- Render --------------------------------------------------------------
-  const cv = document.getElementById('cv');
-  const ctx = cv.getContext('2d');
-
-  function resize(){
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
-    cv.width  = Math.floor(window.innerWidth * dpr);
-    cv.height = Math.floor(window.innerHeight * dpr);
-    cv.style.width = window.innerWidth + 'px';
-    cv.style.height = window.innerHeight + 'px';
-    ctx.setTransform(dpr,0,0,dpr,0,0);
+  // ===== Nav math ==========================================================
+  function bearingTo(lat1, lon1, lat2, lon2){
+    const φ1 = lat1*Math.PI/180, φ2 = lat2*Math.PI/180;
+    const Δλ = (lon2-lon1)*Math.PI/180;
+    const y = Math.sin(Δλ)*Math.cos(φ2);
+    const x = Math.cos(φ1)*Math.sin(φ2) - Math.sin(φ1)*Math.cos(φ2)*Math.cos(Δλ);
+    return ((Math.atan2(y, x)*180/Math.PI)+360)%360;
   }
-  window.addEventListener('resize', resize); resize();
+  function haversineNm(lat1, lon1, lat2, lon2){
+    const R = 3440.065;
+    const φ1 = lat1*Math.PI/180, φ2 = lat2*Math.PI/180;
+    const dφ = (lat2-lat1)*Math.PI/180, dλ = (lon2-lon1)*Math.PI/180;
+    const a = Math.sin(dφ/2)**2 + Math.cos(φ1)*Math.cos(φ2)*Math.sin(dλ/2)**2;
+    return 2*R*Math.asin(Math.sqrt(a));
+  }
+  function vorCdi(){
+    // Course deviation: angle from VOR to A/C minus selected radial.
+    const brgFromVor = bearingTo(VOR.lat, VOR.lon, state.lat, state.lon);
+    const dev = angleDiff(brgFromVor, VOR.courseOBS); // degrees
+    return clamp(dev / 10, -1, 1); // full scale at 10°
+  }
 
-  function drawHorizon(){
-    const W = window.innerWidth, H = window.innerHeight;
+  // ===== Renderers =========================================================
+  function setupCanvas(c){
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const rect = c.getBoundingClientRect();
+    c.width = Math.max(1, Math.floor(rect.width * dpr));
+    c.height = Math.max(1, Math.floor(rect.height * dpr));
+    const ctx = c.getContext('2d');
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    return { ctx, w: rect.width, h: rect.height };
+  }
+
+  function drawAI(c){
+    const { ctx, w, h } = setupCanvas(c);
+    ctx.clearRect(0,0,w,h);
+    const cx = w/2, cy = h/2, R = Math.min(w,h)/2 - 6;
     ctx.save();
-    ctx.translate(W/2, H/2);
+    // Round bezel mask
+    ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2); ctx.clip();
+
+    ctx.translate(cx, cy);
     ctx.rotate(-state.roll * Math.PI/180);
-    const horizonY = state.pitch * 6; // px per deg pitch
-    // sky
-    const sky = ctx.createLinearGradient(0,-H,0,horizonY);
+    const horizonY = state.pitch * 4; // px per deg
+    // Sky
+    const sky = ctx.createLinearGradient(0,-h,0,horizonY);
     sky.addColorStop(0,'#0a1830'); sky.addColorStop(1,'#3b6ea8');
-    ctx.fillStyle = sky;
-    ctx.fillRect(-W,-H, W*2, H + horizonY);
-    // ground
-    const gnd = ctx.createLinearGradient(0,horizonY,0,H);
+    ctx.fillStyle = sky; ctx.fillRect(-w, -h, w*2, h+horizonY);
+    // Ground
+    const gnd = ctx.createLinearGradient(0,horizonY,0,h);
     gnd.addColorStop(0,'#5a3a1d'); gnd.addColorStop(1,'#2a1808');
-    ctx.fillStyle = gnd;
-    ctx.fillRect(-W, horizonY, W*2, H);
-    // horizon line
+    ctx.fillStyle = gnd; ctx.fillRect(-w, horizonY, w*2, h);
+    // Horizon line
     ctx.strokeStyle = '#cfe7ff'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(-W, horizonY); ctx.lineTo(W, horizonY); ctx.stroke();
-    // pitch ladder
+    ctx.beginPath(); ctx.moveTo(-w, horizonY); ctx.lineTo(w, horizonY); ctx.stroke();
+    // Pitch ladder
     ctx.strokeStyle = 'rgba(207,231,255,.7)'; ctx.lineWidth = 1;
-    ctx.font = '11px monospace'; ctx.fillStyle = '#cfe7ff'; ctx.textAlign='center';
+    ctx.font = '10px monospace'; ctx.fillStyle = '#cfe7ff'; ctx.textAlign='center';
     for (let p=-30; p<=30; p+=5){
       if (p===0) continue;
-      const y = horizonY - p*6;
-      const w = p%10===0 ? 70 : 40;
-      ctx.beginPath(); ctx.moveTo(-w,y); ctx.lineTo(w,y); ctx.stroke();
-      if (p%10===0) ctx.fillText(String(p), -w-14, y+4);
+      const y = horizonY - p*4;
+      const ww = p%10===0 ? 36 : 22;
+      ctx.beginPath(); ctx.moveTo(-ww,y); ctx.lineTo(ww,y); ctx.stroke();
+      if (p%10===0) ctx.fillText(String(p), -ww-10, y+3);
     }
+    ctx.restore();
+
+    // Bezel + roll scale
+    ctx.save();
+    ctx.translate(cx,cy);
+    ctx.strokeStyle = '#cfe7ff'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(0,0,R,0,Math.PI*2); ctx.stroke();
+    for (const ang of [-60,-45,-30,-20,-10,0,10,20,30,45,60]){
+      const a = (ang-90)*Math.PI/180;
+      const r1 = R, r2 = R - (Math.abs(ang)%30===0?10:6);
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a)*r1, Math.sin(a)*r1);
+      ctx.lineTo(Math.cos(a)*r2, Math.sin(a)*r2);
+      ctx.stroke();
+    }
+    // Roll pointer (rotates with roll)
+    ctx.rotate(-state.roll*Math.PI/180);
+    ctx.fillStyle = '#ffeb3b';
+    ctx.beginPath(); ctx.moveTo(0,-R+2); ctx.lineTo(-6,-R+12); ctx.lineTo(6,-R+12); ctx.closePath(); ctx.fill();
     ctx.restore();
 
     // Aircraft reference (fixed)
     ctx.strokeStyle = '#ffeb3b'; ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(W/2-60, H/2); ctx.lineTo(W/2-20, H/2);
-    ctx.moveTo(W/2+20, H/2); ctx.lineTo(W/2+60, H/2);
-    ctx.moveTo(W/2-6, H/2); ctx.arc(W/2, H/2, 6, 0, Math.PI*2);
+    ctx.moveTo(cx-R*0.55, cy); ctx.lineTo(cx-R*0.18, cy);
+    ctx.moveTo(cx+R*0.18, cy); ctx.lineTo(cx+R*0.55, cy);
     ctx.stroke();
-
-    // Heading tape
-    drawHeadingTape(W, H);
+    ctx.beginPath(); ctx.arc(cx,cy,4,0,Math.PI*2); ctx.fillStyle='#ffeb3b'; ctx.fill();
   }
 
-  function drawHeadingTape(W, H){
-    const cy = 30;
-    ctx.fillStyle = 'rgba(0,0,0,.45)';
-    ctx.fillRect(W/2-160, 8, 320, 36);
+  function drawVOR(c){
+    const { ctx, w, h } = setupCanvas(c);
+    ctx.clearRect(0,0,w,h);
+    const cx = w/2, cy = h/2, R = Math.min(w,h)/2 - 10;
+
+    // Bezel
+    ctx.fillStyle = '#0a121b'; ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle = '#1f2f44'; ctx.lineWidth = 2; ctx.stroke();
+
+    // Compass card rotates so current heading is at top
+    ctx.save(); ctx.translate(cx,cy); ctx.rotate(-state.hdg*Math.PI/180);
     ctx.strokeStyle = '#cfe7ff'; ctx.fillStyle = '#cfe7ff';
-    ctx.font = '12px monospace'; ctx.textAlign = 'center';
-    for (let d=-60; d<=60; d+=10){
-      const h = Math.round((state.hdg + d + 360)) % 360;
-      const x = W/2 + d*4;
-      const major = h%30===0;
+    ctx.font = '11px monospace'; ctx.textAlign = 'center';
+    for (let d=0; d<360; d+=10){
+      const a = (d-90)*Math.PI/180;
+      const major = d%30===0;
+      const r1 = R-2, r2 = R - (major?12:6);
+      ctx.lineWidth = major?2:1;
       ctx.beginPath();
-      ctx.moveTo(x, cy-8); ctx.lineTo(x, cy + (major?8:4)); ctx.stroke();
-      if (major) ctx.fillText(String(h).padStart(3,'0'), x, cy+22);
+      ctx.moveTo(Math.cos(a)*r1, Math.sin(a)*r1);
+      ctx.lineTo(Math.cos(a)*r2, Math.sin(a)*r2);
+      ctx.stroke();
+      if (major){
+        const lbl = d===0?'N':d===90?'E':d===180?'S':d===270?'W':String(d/10);
+        const tr = R - 22;
+        ctx.fillText(lbl, Math.cos(a)*tr, Math.sin(a)*tr+4);
+      }
     }
-    // index
+    // Course (OBS) needle: line through center, plus deflection bar
+    ctx.save();
+    ctx.rotate(VOR.courseOBS*Math.PI/180);
+    ctx.strokeStyle = '#ffeb3b'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(0,-R*0.85); ctx.lineTo(0,-R*0.25); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, R*0.25); ctx.lineTo(0, R*0.85); ctx.stroke();
+    // Arrowhead
+    ctx.beginPath(); ctx.moveTo(0,-R*0.9); ctx.lineTo(-7,-R*0.78); ctx.lineTo(7,-R*0.78); ctx.closePath();
+    ctx.fillStyle='#ffeb3b'; ctx.fill();
+    // CDI deflection bar
+    const cdi = vorCdi();
+    const deflectPx = cdi * R*0.5;
+    ctx.strokeStyle = cdi>0?'#00ff9d':'#00ff9d';
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(deflectPx, -R*0.3); ctx.lineTo(deflectPx, R*0.3); ctx.stroke();
+    // Dots
+    ctx.fillStyle = '#cfe7ff';
+    for (const d of [-2,-1,1,2]){
+      ctx.beginPath(); ctx.arc(d*R*0.12, 0, 3, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+    ctx.restore();
+
+    // Heading index at top
     ctx.fillStyle = '#ffeb3b';
-    ctx.beginPath(); ctx.moveTo(W/2, cy+10); ctx.lineTo(W/2-6, cy+18); ctx.lineTo(W/2+6, cy+18); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(cx, cy-R-2); ctx.lineTo(cx-7, cy-R+8); ctx.lineTo(cx+7, cy-R+8); ctx.closePath(); ctx.fill();
+
+    // TO/FROM and DME
+    const brgFromVor = bearingTo(VOR.lat, VOR.lon, state.lat, state.lon);
+    const dev = angleDiff(brgFromVor, VOR.courseOBS);
+    const toFrom = Math.abs(dev) < 90 ? 'FROM' : 'TO';
+    const dme = haversineNm(state.lat, state.lon, VOR.lat, VOR.lon);
+    ctx.fillStyle = '#cfe7ff'; ctx.font = '11px monospace'; ctx.textAlign='left';
+    ctx.fillText('OBS ' + String(VOR.courseOBS).padStart(3,'0') + '°', 8, h-30);
+    ctx.fillText('CRS ' + toFrom, 8, h-16);
+    ctx.textAlign='right';
+    ctx.fillText('DME ' + dme.toFixed(1) + ' NM', w-8, h-16);
   }
 
-  // ---- HUD text ------------------------------------------------------------
+  function drawMap(c){
+    const { ctx, w, h } = setupCanvas(c);
+    ctx.clearRect(0,0,w,h);
+    const cx = w/2, cy = h/2;
+    const scaleNm = 5;
+    const pxPerNm = Math.min(w,h)/2 / scaleNm;
+    document.getElementById('map-scale').textContent = scaleNm + ' NM';
+
+    // BG grid
+    ctx.fillStyle = '#070b10'; ctx.fillRect(0,0,w,h);
+    ctx.strokeStyle = '#10202f'; ctx.lineWidth = 1;
+    for (let i=-scaleNm;i<=scaleNm;i++){
+      ctx.beginPath(); ctx.moveTo(cx + i*pxPerNm, 0); ctx.lineTo(cx + i*pxPerNm, h); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, cy + i*pxPerNm); ctx.lineTo(w, cy + i*pxPerNm); ctx.stroke();
+    }
+    // Range rings
+    ctx.strokeStyle = '#1f3a52';
+    for (const r of [1,2,3,4,5]){
+      ctx.beginPath(); ctx.arc(cx,cy, r*pxPerNm, 0, Math.PI*2); ctx.stroke();
+      ctx.fillStyle = '#3a5a82'; ctx.font='9px monospace'; ctx.textAlign='left';
+      ctx.fillText(r+'NM', cx + r*pxPerNm + 2, cy - 2);
+    }
+
+    // VOR station (track-up: rotate world by -hdg)
+    ctx.save();
+    ctx.translate(cx,cy);
+    ctx.rotate(-state.hdg*Math.PI/180);
+    // VOR marker
+    const dN = (VOR.lat - state.lat) * 60; // NM north
+    const dE = (VOR.lon - state.lon) * 60 * Math.cos(state.lat*Math.PI/180);
+    const vx = dE * pxPerNm, vy = -dN * pxPerNm;
+    ctx.fillStyle = '#00ff9d'; ctx.strokeStyle = '#00ff9d'; ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let i=0;i<6;i++){
+      const a = i*Math.PI/3;
+      const x = vx + Math.cos(a)*8, y = vy + Math.sin(a)*8;
+      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.closePath(); ctx.stroke();
+    ctx.fillStyle = '#00ff9d'; ctx.beginPath(); ctx.arc(vx,vy,2,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#cfe7ff'; ctx.font = '10px monospace'; ctx.textAlign='left';
+    ctx.fillText(VOR.id+' '+VOR.freq, vx + 12, vy + 4);
+
+    // OBS course line through VOR
+    ctx.save();
+    ctx.translate(vx, vy);
+    ctx.rotate(VOR.courseOBS*Math.PI/180);
+    ctx.strokeStyle = 'rgba(255,235,59,.6)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0,-200); ctx.lineTo(0,200); ctx.stroke();
+    ctx.restore();
+    ctx.restore();
+
+    // Aircraft (fixed at center, pointing up)
+    ctx.fillStyle = '#ffeb3b';
+    ctx.beginPath();
+    ctx.moveTo(cx, cy-10); ctx.lineTo(cx-7, cy+8); ctx.lineTo(cx, cy+4); ctx.lineTo(cx+7, cy+8);
+    ctx.closePath(); ctx.fill();
+
+    // North indicator
+    ctx.save();
+    ctx.translate(w-22, 22);
+    ctx.rotate(-state.hdg*Math.PI/180);
+    ctx.strokeStyle = '#cfe7ff'; ctx.fillStyle = '#cfe7ff';
+    ctx.beginPath(); ctx.moveTo(0,-10); ctx.lineTo(-5,8); ctx.lineTo(5,8); ctx.closePath(); ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = '#cfe7ff'; ctx.font='10px monospace'; ctx.textAlign='center';
+    ctx.fillText('N', w-22, 42);
+  }
+
+  // ===== HUD text ==========================================================
   const hudEls = {
-    hdg: document.getElementById('hdg'),
-    alt: document.getElementById('alt'),
-    ias: document.getElementById('ias'),
-    vs:  document.getElementById('vs'),
-    pos: document.getElementById('pos'),
-    rate:document.getElementById('rate'),
+    hdg: document.getElementById('hdg'), alt: document.getElementById('alt'),
+    ias: document.getElementById('ias'), vs:  document.getElementById('vs'),
+    pos: document.getElementById('pos'), rate:document.getElementById('rate'),
     clk: document.getElementById('clk')
   };
-  function fmt(n, w){ return String(Math.round(n)).padStart(w,'0'); }
-  function fmtClk(s){
-    s = Math.floor(s);
-    const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), ss = s%60;
-    return fmt(h,2)+':'+fmt(m,2)+':'+fmt(ss,2);
-  }
+  function fmt(n,w){ return String(Math.round(n)).padStart(w,'0'); }
+  function fmtClk(s){ s=Math.floor(s); const h=Math.floor(s/3600), m=Math.floor((s%3600)/60), ss=s%60; return fmt(h,2)+':'+fmt(m,2)+':'+fmt(ss,2); }
   function updateHud(){
     hudEls.hdg.textContent = fmt(state.hdg,3);
     hudEls.alt.textContent = fmt(state.alt,1);
@@ -284,31 +568,32 @@
     hudEls.clk.textContent = fmtClk(state.simTime);
   }
 
-  // ---- Main loop -----------------------------------------------------------
+  // ===== Main loop =========================================================
+  const cAi = document.getElementById('cv-ai');
+  const cVor = document.getElementById('cv-vor');
+  const cMap = document.getElementById('cv-map');
+
   function frame(now){
     const wallDt = Math.min(0.1, (state.lastWall ? (now - state.lastWall)/1000 : 1/60));
     state.lastWall = now;
-
     if (!state.paused){
-      // Sub-step the physics so each step is <= MAX_STEP of sim time.
       const simDt = wallDt * state.simRate;
       const steps = Math.max(1, Math.ceil(simDt / MAX_STEP));
       const sub = simDt / steps;
       for (let i=0;i<steps;i++) step(sub);
     }
-
-    drawHorizon();
+    drawAI(cAi); drawVOR(cVor); drawMap(cMap);
     updateHud();
     requestAnimationFrame(frame);
   }
 
-  // ---- Boot ---------------------------------------------------------------
+  // ===== Boot ==============================================================
   renderVel();
-  // Expose a tiny test hook for headless tests / cucumber probes
-  window.__ifrPilot = {
-    state, RATES, setRate, cycleRate,
-    step, // for unit-style probes
-  };
+  window.addEventListener('resize', () => { /* canvas resizes via setupCanvas each frame */ });
+
+  // Test hooks
+  window.__ifrPilot = { state, RATES, setRate, cycleRate, step, VOR, vorCdi, bearingTo };
+
   requestAnimationFrame((t) => { state.lastWall = t; requestAnimationFrame(frame); });
 })();
 </script>
