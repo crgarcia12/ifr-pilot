@@ -104,6 +104,37 @@
     color:#cfe7ff;font-family:inherit;font-size:14px;line-height:1;font-weight:700;
   }
   .ap-knob button:hover{border-color:#3a5a82}
+  .ap-knob .led{cursor:pointer;user-select:none;border-radius:3px;padding:1px 4px}
+  .ap-knob .led:hover{outline:1px dashed #3a5a82}
+  .ap-knob.armed{border-color:#ffeb3b;box-shadow:0 0 0 1px rgba(255,235,59,.45) inset, 0 0 8px rgba(255,235,59,.35)}
+  .ap-knob.armed .led{outline:1px solid #ffeb3b}
+  .rad-row .led{cursor:pointer;user-select:none;border-radius:3px;padding:1px 4px}
+  .rad-row .led:hover{outline:1px dashed #3a5a82}
+  .rad-row.armed{border-color:#ffeb3b;box-shadow:0 0 0 1px rgba(255,235,59,.45) inset, 0 0 8px rgba(255,235,59,.35)}
+  .rad-row.armed .led{outline:1px solid #ffeb3b}
+
+  /* Map popup */
+  #map{position:relative}
+  #map-popup{
+    position:absolute;pointer-events:auto;display:none;
+    background:linear-gradient(#0c131c,#070b10);
+    border:1px solid #2a3d56;border-radius:6px;padding:8px 10px;
+    color:#cfe7ff;font-family:inherit;font-size:11px;line-height:1.35;
+    box-shadow:0 6px 18px rgba(0,0,0,.6);min-width:160px;z-index:5;
+  }
+  #map-popup .pop-id{font-size:13px;font-weight:700;color:#00ff9d;letter-spacing:.05em;display:flex;justify-content:space-between;gap:8px}
+  #map-popup .pop-id.ils{color:#ffb547}
+  #map-popup .pop-name{color:#7cd8ff;margin-top:2px}
+  #map-popup .pop-row{display:flex;justify-content:space-between;gap:8px;margin-top:3px}
+  #map-popup .pop-row b{color:#ffeb3b;font-weight:700}
+  #map-popup .pop-close{position:absolute;top:2px;right:6px;cursor:pointer;color:#5b7a99;font-size:14px;line-height:1}
+  #map-popup .pop-close:hover{color:#cfe7ff}
+  #map-popup .pop-tune{
+    margin-top:6px;width:100%;cursor:pointer;
+    background:linear-gradient(#1a2535,#0c131c);border:1px solid #2a3d56;border-radius:3px;
+    color:#cfe7ff;font-family:inherit;font-size:10px;padding:3px 6px;letter-spacing:.1em;
+  }
+  #map-popup .pop-tune:hover{border-color:#7cd8ff;color:#7cd8ff}
 
   /* Radio stack */
   #radio-panel{
@@ -165,6 +196,7 @@
   <section class="inst" id="map">
     <div class="title"><span>Moving Map</span><span class="badge" id="map-scale">5 NM</span></div>
     <canvas id="cv-map"></canvas>
+    <div id="map-popup" role="dialog" aria-label="Navaid info"></div>
   </section>
 
   <section class="inst" id="radio">
@@ -741,6 +773,17 @@
       ctx.beginPath(); ctx.arc(p.x, p.y, 2, 0, Math.PI*2); ctx.fill();
       ctx.fillStyle = '#cfe7ff'; ctx.font = '10px monospace'; ctx.textAlign='left';
       ctx.fillText(n.id, p.x + 9, p.y + 4);
+      // Frequency under the id (and runway heading for ILS).
+      if (n.freq != null){
+        ctx.fillStyle = isIls ? '#ffb547' : '#7cd8ff';
+        ctx.font = '9px monospace';
+        const f = (typeof n.freq === 'number' ? n.freq : parseFloat(n.freq)).toFixed(2);
+        ctx.fillText(f, p.x + 9, p.y + 15);
+        if (isIls && typeof n.runway_heading === 'number'){
+          ctx.fillStyle = '#5b7a99';
+          ctx.fillText('RWY ' + String(n.runway_heading).padStart(3,'0'), p.x + 9, p.y + 25);
+        }
+      }
     }
 
     // Aircraft icon (rotated by heading), drawn at its world position.
@@ -808,6 +851,179 @@
 
   // Test hooks
   window.__ifrPilot = { state, RATES, setRate, cycleRate, step, VOR, vorCdi, bearingTo };
+
+  // ===== Map navaid popup =================================================
+  // Click a VOR/ILS marker on the moving map to see its frequency, type,
+  // and (for ILS) runway heading. Clicking empty map space closes the popup.
+  (function navaidPopup(){
+    const popup = document.getElementById('map-popup');
+    const mapSec = document.getElementById('map');
+    let downAt = null;
+    cMap.addEventListener('mousedown', (e) => { downAt = { x: e.clientX, y: e.clientY }; });
+    cMap.addEventListener('click', (e) => {
+      // Suppress click that was actually a pan-drag (>4px of motion).
+      if (downAt){
+        const moved = Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y);
+        downAt = null;
+        if (moved > 4) return;
+      }
+      const rect = cMap.getBoundingClientRect();
+      const px = e.clientX - rect.left, py = e.clientY - rect.top;
+      const w = rect.width, h = rect.height;
+      const m = state.map || { scaleNm: 5, centerLat: state.lat, centerLon: state.lon, follow: true };
+      const cx = w/2, cy = h/2;
+      const centerLat = m.follow ? state.lat : m.centerLat;
+      const centerLon = m.follow ? state.lon : m.centerLon;
+      const pxPerNm = Math.min(w,h)/2 / m.scaleNm;
+      const navaids = window.__ifrNavaids || [];
+      let best = null, bestD = Infinity;
+      for (const n of navaids){
+        const dN = (n.lat - centerLat) * 60;
+        const dE = (n.lon - centerLon) * 60 * Math.cos(centerLat*Math.PI/180);
+        const x = cx + dE * pxPerNm, y = cy - dN * pxPerNm;
+        const d = Math.hypot(x - px, y - py);
+        if (d < bestD){ bestD = d; best = { n, x, y }; }
+      }
+      if (!best || bestD > 14){ popup.style.display = 'none'; return; }
+      showPopup(best.n, best.x, best.y);
+    });
+    popup.addEventListener('click', (e) => {
+      const t = e.target;
+      if (t && t.classList.contains('pop-close')){ popup.style.display = 'none'; return; }
+      if (t && t.classList.contains('pop-tune')){
+        const freq = parseFloat(t.getAttribute('data-freq'));
+        if (!Number.isNaN(freq)){
+          state.radio.nav1.standby = Math.round(freq*100)/100;
+          if (window.__ifrRadioRender) window.__ifrRadioRender();
+          showToast('NAV1 STBY ' + freq.toFixed(2));
+        }
+      }
+    });
+    function showPopup(n, x, y){
+      const isIls = n.type === 'ILS';
+      const freq = (typeof n.freq === 'number' ? n.freq : parseFloat(n.freq)).toFixed(2);
+      const rows = [
+        `<div class="pop-id ${isIls?'ils':''}"><span>${n.id}</span><span>${n.type||''}</span></div>`,
+        n.name ? `<div class="pop-name">${n.name}</div>` : '',
+        `<div class="pop-row"><span>FREQ</span><b>${freq}</b></div>`,
+        isIls && typeof n.runway_heading === 'number' ? `<div class="pop-row"><span>RWY HDG</span><b>${String(n.runway_heading).padStart(3,'0')}°</b></div>` : '',
+        isIls && typeof n.glideslope_deg === 'number' ? `<div class="pop-row"><span>GS</span><b>${n.glideslope_deg.toFixed(1)}°</b></div>` : '',
+        `<div class="pop-row"><span>LAT/LON</span><b>${n.lat.toFixed(3)}, ${n.lon.toFixed(3)}</b></div>`,
+        `<button class="pop-tune" data-freq="${freq}" type="button">TUNE NAV1 STBY → ${freq}</button>`,
+        `<span class="pop-close" title="Close">×</span>`
+      ].join('');
+      popup.innerHTML = rows;
+      // Position relative to the #map section (popup is a child of it).
+      const secRect = mapSec.getBoundingClientRect();
+      const canRect = cMap.getBoundingClientRect();
+      let left = (canRect.left - secRect.left) + x + 14;
+      let top  = (canRect.top  - secRect.top)  + y - 8;
+      // Keep on-screen within the section.
+      const pw = 200, ph = 140;
+      if (left + pw > secRect.width) left = (canRect.left - secRect.left) + x - pw - 14;
+      if (top + ph > secRect.height) top = secRect.height - ph - 4;
+      if (top < 4) top = 4;
+      popup.style.left = left + 'px';
+      popup.style.top = top + 'px';
+      popup.style.display = 'block';
+    }
+  })();
+
+  // ===== Knob arming + mouse-wheel scroll =================================
+  // Click an LED to "arm" a knob, then scroll the mouse wheel anywhere to
+  // change it. Click again (or click another knob/elsewhere) to disarm.
+  (function knobWheel(){
+    let armed = null; // { id, kind, step, fn, container }
+    function disarm(){
+      if (armed && armed.container) armed.container.classList.remove('armed');
+      armed = null;
+    }
+    const apKnobMap = {
+      'ap-hdg-val': { fn: bumpHdg,  step: 1,   big: 5,   label: 'HDG' },
+      'ap-crs-val': { fn: bumpCrs,  step: 1,   big: 5,   label: 'CRS' },
+      'ap-alt-val': { fn: bumpAlt,  step: 100, big: 1000,label: 'ALT' },
+      'ap-vs-val':  { fn: bumpVs,   step: 100, big: 500, label: 'VS'  }
+    };
+    Object.keys(apKnobMap).forEach((id) => {
+      const led = document.getElementById(id);
+      if (!led) return;
+      const container = led.closest('.ap-knob');
+      led.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (armed && armed.id === id){ disarm(); return; }
+        disarm();
+        armed = { id, kind:'ap', container, ...apKnobMap[id] };
+        container.classList.add('armed');
+        showToast('SCROLL = ' + apKnobMap[id].label);
+      });
+    });
+    // Radio standby LEDs are armable too.
+    function wireRadioRowsArming(){
+      const radioEl = document.getElementById('radio-panel');
+      const meta = {
+        nav1: { step: 0.05, big: 1.00, min: 108.00, max: 117.95, dec: 2 },
+        nav2: { step: 0.05, big: 1.00, min: 108.00, max: 117.95, dec: 2 },
+        com1: { step: 0.025,big: 1.00, min: 118.000,max: 136.975,dec: 3 },
+        com2: { step: 0.025,big: 1.00, min: 118.000,max: 136.975,dec: 3 }
+      };
+      radioEl.querySelectorAll('[id^="rad-"][id$="-sby"]').forEach((led) => {
+        const k = led.id.replace('rad-','').replace('-sby',''); // e.g. nav1
+        if (!meta[k]) return;
+        const container = led.closest('.rad-row');
+        led.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (armed && armed.id === led.id){ disarm(); return; }
+          disarm();
+          armed = {
+            id: led.id, kind:'radio', container,
+            step: meta[k].step, big: meta[k].big,
+            label: k.toUpperCase() + ' STBY',
+            fn: (delta) => {
+              const m = meta[k]; const s = state.radio[k];
+              s.standby = Math.max(m.min, Math.min(m.max, s.standby + delta));
+              s.standby = Math.round(s.standby / m.step) * m.step;
+              if (window.__ifrRadioRender) window.__ifrRadioRender();
+              // Re-attach armed indicator after re-render.
+              const el = document.getElementById(led.id);
+              if (el){
+                const c = el.closest('.rad-row');
+                if (c){ c.classList.add('armed'); armed.container = c; }
+              }
+            }
+          };
+          container.classList.add('armed');
+          showToast('SCROLL = ' + armed.label);
+        });
+      });
+    }
+    wireRadioRowsArming();
+    // The radio panel re-renders on every change; re-bind after each render.
+    const origRender = window.__ifrRadioRender;
+    window.__ifrRadioRender = function(){
+      if (origRender) origRender();
+      wireRadioRowsArming();
+    };
+    // Disarm when clicking outside knobs/leds.
+    document.addEventListener('click', (e) => {
+      if (!armed) return;
+      const t = e.target;
+      if (t.closest && (t.closest('.ap-knob.armed') || t.closest('.rad-row.armed'))) return;
+      disarm();
+    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') disarm(); });
+    // Wheel handler — only acts when a knob is armed.
+    window.addEventListener('wheel', (e) => {
+      if (!armed) return;
+      // Don't interfere with map zoom — map has its own wheel handler that
+      // calls preventDefault() before this fires.
+      if (e.target === cMap) return;
+      e.preventDefault();
+      const sign = e.deltaY < 0 ? +1 : -1;
+      const big = e.shiftKey;
+      const delta = sign * (big ? armed.big : armed.step);
+      armed.fn(delta);
+    }, { passive: false });
+  })();
 
   requestAnimationFrame((t) => { state.lastWall = t; requestAnimationFrame(frame); });
 })();
