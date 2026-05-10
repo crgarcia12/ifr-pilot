@@ -15,7 +15,7 @@
     position:fixed;inset:0;display:grid;
     grid-template-columns:1fr 1fr 1fr;
     grid-template-rows:auto 1fr auto;
-    gap:8px;padding:8px;
+    gap:8px;padding:8px;padding-right:300px;
   }
   header{
     grid-column:1 / -1;display:flex;align-items:center;gap:12px;
@@ -49,22 +49,119 @@
   .legend{font-size:11px;color:var(--dim)}
   .legend kbd{background:#0e1620;border:1px solid #28405c;border-bottom-width:2px;border-radius:3px;padding:1px 5px;color:var(--ink)}
   #toast{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.75);padding:10px 16px;border-radius:6px;color:var(--accent);font-size:14px;display:none;z-index:9}
-  /* Autopilot panel */
-  #ap-panel{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:10px;font-size:12px}
-  #ap-panel .row{display:flex;flex-direction:column;gap:4px;background:#0a121b;border:1px solid var(--edge);border-radius:6px;padding:6px}
-  #ap-panel label{color:var(--dim);font-size:10px;letter-spacing:.15em}
-  #ap-panel .v{font-size:14px;color:var(--ink);font-weight:600}
-  #ap-panel .v.on{color:var(--accent)}
-  #ap-panel button{
-    appearance:none;border:1px solid #28405c;background:#0e1620;color:var(--ink);
-    font-family:inherit;font-size:11px;padding:4px 6px;border-radius:4px;cursor:pointer
+  /* ── Aviation-style Autopilot + Radio panels ─────────────────────────── */
+  /* Buttons that look like backlit cockpit pushbuttons. */
+  .av-btn{
+    appearance:none;font-family:inherit;font-size:11px;font-weight:700;
+    letter-spacing:.18em;text-transform:uppercase;
+    padding:6px 10px;border-radius:4px;cursor:pointer;
+    background:linear-gradient(#1a2535,#0c131c);
+    color:#7c92aa;border:1px solid #2a3d56;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.04), 0 1px 0 #000;
+    min-width:46px;
   }
-  #ap-panel button.on{background:var(--accent);color:#001b10;border-color:var(--accent);font-weight:700}
-  #ap-panel input{
-    background:#0a121b;border:1px solid var(--edge);color:var(--ink);font-family:inherit;
-    font-size:12px;padding:3px 4px;border-radius:4px;width:100%
+  .av-btn:hover{border-color:#3a5a82;color:#cfe7ff}
+  .av-btn.on{
+    background:linear-gradient(#00ffae,#00b87a);
+    color:#001b10;border-color:#00ffae;
+    box-shadow:0 0 6px rgba(0,255,157,.65), inset 0 1px 0 rgba(255,255,255,.3);
   }
-  #ap-panel .ctrl{display:flex;gap:4px;align-items:center}
+  .av-btn.warn.on{
+    background:linear-gradient(#ffd073,#ff9b1c);color:#2b1500;border-color:#ffb547;
+    box-shadow:0 0 6px rgba(255,181,71,.65);
+  }
+
+  /* Digital readout — 7-segment-ish LED look */
+  .led{
+    font-family:'Courier New',ui-monospace,monospace;
+    font-weight:700;letter-spacing:.06em;
+    background:#040708;border:1px solid #1f2f44;border-radius:4px;
+    padding:4px 8px;color:#ffb547;
+    text-shadow:0 0 6px rgba(255,181,71,.55);
+    text-align:center;display:inline-block;min-width:64px;
+  }
+  .led.green{color:#00ff9d;text-shadow:0 0 6px rgba(0,255,157,.55)}
+  .led.cyan{color:#7cd8ff;text-shadow:0 0 6px rgba(124,216,255,.55)}
+  .led.dim{color:#3a5a82;text-shadow:none}
+
+  /* Autopilot */
+  #ap-panel{
+    display:flex;flex-direction:column;gap:8px;padding:10px;
+    background:#070b10;border-top:1px solid #1f2f44;
+  }
+  #ap-modes{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
+  #ap-knobs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .ap-knob{
+    background:linear-gradient(#0c131c,#070b10);border:1px solid #1f2f44;
+    border-radius:6px;padding:6px 8px;display:flex;flex-direction:column;gap:4px;
+    align-items:center;
+  }
+  .ap-knob .lbl{font-size:9px;letter-spacing:.25em;color:#5b7a99}
+  .ap-knob .row{display:flex;gap:4px;align-items:center}
+  .ap-knob button{
+    appearance:none;width:24px;height:22px;border-radius:3px;cursor:pointer;
+    background:linear-gradient(#1a2535,#0c131c);border:1px solid #2a3d56;
+    color:#cfe7ff;font-family:inherit;font-size:14px;line-height:1;font-weight:700;
+  }
+  .ap-knob button:hover{border-color:#3a5a82}
+  .ap-knob .led{cursor:pointer;user-select:none;border-radius:3px;padding:1px 4px}
+  .ap-knob .led:hover{outline:1px dashed #3a5a82}
+  .ap-knob.armed{border-color:#ffeb3b;box-shadow:0 0 0 1px rgba(255,235,59,.45) inset, 0 0 8px rgba(255,235,59,.35)}
+  .ap-knob.armed .led{outline:1px solid #ffeb3b}
+  .rad-row .led{cursor:pointer;user-select:none;border-radius:3px;padding:1px 4px}
+  .rad-row .led:hover{outline:1px dashed #3a5a82}
+  .rad-row.armed{border-color:#ffeb3b;box-shadow:0 0 0 1px rgba(255,235,59,.45) inset, 0 0 8px rgba(255,235,59,.35)}
+  .rad-row.armed .led{outline:1px solid #ffeb3b}
+
+  /* Map popup */
+  #map{position:relative}
+  #map-popup{
+    position:absolute;pointer-events:auto;display:none;
+    background:linear-gradient(#0c131c,#070b10);
+    border:1px solid #2a3d56;border-radius:6px;padding:8px 10px;
+    color:#cfe7ff;font-family:inherit;font-size:11px;line-height:1.35;
+    box-shadow:0 6px 18px rgba(0,0,0,.6);min-width:160px;z-index:5;
+  }
+  #map-popup .pop-id{font-size:13px;font-weight:700;color:#00ff9d;letter-spacing:.05em;display:flex;justify-content:space-between;gap:8px}
+  #map-popup .pop-id.ils{color:#ffb547}
+  #map-popup .pop-name{color:#7cd8ff;margin-top:2px}
+  #map-popup .pop-row{display:flex;justify-content:space-between;gap:8px;margin-top:3px}
+  #map-popup .pop-row b{color:#ffeb3b;font-weight:700}
+  #map-popup .pop-close{position:absolute;top:2px;right:6px;cursor:pointer;color:#5b7a99;font-size:14px;line-height:1}
+  #map-popup .pop-close:hover{color:#cfe7ff}
+  #map-popup .pop-tune{
+    margin-top:6px;width:100%;cursor:pointer;
+    background:linear-gradient(#1a2535,#0c131c);border:1px solid #2a3d56;border-radius:3px;
+    color:#cfe7ff;font-family:inherit;font-size:10px;padding:3px 6px;letter-spacing:.1em;
+  }
+  #map-popup .pop-tune:hover{border-color:#7cd8ff;color:#7cd8ff}
+
+  /* Radio stack */
+  #radio-panel{
+    display:flex;flex-direction:column;gap:6px;padding:10px;
+    background:#070b10;border-top:1px solid #1f2f44;
+  }
+  .rad-row{
+    display:grid;grid-template-columns:48px 1fr auto 1fr 28px;gap:6px;align-items:center;
+    background:linear-gradient(#0c131c,#070b10);border:1px solid #1f2f44;
+    border-radius:6px;padding:5px 8px;
+  }
+  .rad-row .id{font-size:10px;letter-spacing:.2em;color:#5b7a99;font-weight:700}
+  .rad-row .freq-stack{display:flex;flex-direction:column;align-items:center;gap:2px}
+  .rad-row .freq-stack .lbl{font-size:8px;letter-spacing:.2em;color:#3a5a82}
+  .rad-row .freq-ctrl{display:flex;gap:3px;align-items:center}
+  .rad-row .freq-ctrl button{
+    appearance:none;width:20px;height:18px;border-radius:3px;cursor:pointer;
+    background:linear-gradient(#1a2535,#0c131c);border:1px solid #2a3d56;
+    color:#cfe7ff;font-family:inherit;font-size:11px;line-height:1;
+  }
+  .rad-row .freq-ctrl button:hover{border-color:#3a5a82}
+  .rad-row .swap{
+    appearance:none;width:24px;height:24px;border-radius:50%;cursor:pointer;
+    background:linear-gradient(#1a2535,#0c131c);border:1px solid #2a3d56;
+    color:#7cd8ff;font-family:inherit;font-size:14px;line-height:1;
+  }
+  .rad-row .swap:hover{border-color:#7cd8ff;color:#cfe7ff}
   @media (max-width: 900px){
     #app{grid-template-columns:1fr 1fr;}
     #ai{grid-column:1 / -1;}
@@ -99,34 +196,45 @@
   <section class="inst" id="map">
     <div class="title"><span>Moving Map</span><span class="badge" id="map-scale">5 NM</span></div>
     <canvas id="cv-map"></canvas>
+    <div id="map-popup" role="dialog" aria-label="Navaid info"></div>
   </section>
 
-  <section class="inst" id="ap" style="grid-column:1 / -1">
+  <section class="inst" id="radio">
+    <div class="title"><span>COM / NAV Radio</span><span class="badge" id="radio-active-id">NAV1 ---</span></div>
+    <div id="radio-panel"></div>
+  </section>
+
+  <section class="inst" id="ap" style="grid-column:2 / -1">
     <div class="title"><span>Autopilot</span><span class="badge" id="ap-master">OFF</span></div>
     <div id="ap-panel">
-      <div class="row">
-        <label>MASTER</label>
-        <button id="ap-toggle">AP OFF</button>
+      <div id="ap-modes">
+        <button class="av-btn" id="ap-toggle" title="Master AP">AP</button>
+        <button class="av-btn" id="ap-hdg" title="Heading hold">HDG</button>
+        <button class="av-btn" id="ap-nav" title="Track NAV1 course">NAV</button>
+        <button class="av-btn warn" id="ap-apr" title="Approach">APR</button>
+        <button class="av-btn" id="ap-alt" title="Altitude hold">ALT</button>
+        <button class="av-btn" id="ap-vs" title="Vertical speed mode">VS</button>
       </div>
-      <div class="row">
-        <label>HDG MODE</label>
-        <div class="ctrl">
-          <button id="ap-hdg">HDG</button>
-          <input id="ap-hdg-val" type="number" min="0" max="359" value="090" />
+      <div id="ap-knobs">
+        <div class="ap-knob">
+          <div class="lbl">HDG</div>
+          <div class="led green" id="ap-hdg-val">090°</div>
+          <div class="row"><button id="ap-hdg-dn" type="button">−</button><button id="ap-hdg-up" type="button">+</button></div>
         </div>
-      </div>
-      <div class="row">
-        <label>ALT MODE</label>
-        <div class="ctrl">
-          <button id="ap-alt">ALT</button>
-          <input id="ap-alt-val" type="number" min="0" max="40000" step="100" value="3000" />
+        <div class="ap-knob">
+          <div class="lbl">CRS</div>
+          <div class="led cyan" id="ap-crs-val">090°</div>
+          <div class="row"><button id="ap-crs-dn" type="button">−</button><button id="ap-crs-up" type="button">+</button></div>
         </div>
-      </div>
-      <div class="row">
-        <label>NAV MODE</label>
-        <div class="ctrl">
-          <button id="ap-nav">NAV</button>
-          <span class="v" id="ap-nav-status">—</span>
+        <div class="ap-knob">
+          <div class="lbl">ALT</div>
+          <div class="led" id="ap-alt-val">3000</div>
+          <div class="row"><button id="ap-alt-dn" type="button">−</button><button id="ap-alt-up" type="button">+</button></div>
+        </div>
+        <div class="ap-knob">
+          <div class="lbl">VS</div>
+          <div class="led" id="ap-vs-val">+0</div>
+          <div class="row"><button id="ap-vs-dn" type="button">−</button><button id="ap-vs-up" type="button">+</button></div>
         </div>
       </div>
     </div>
@@ -164,8 +272,20 @@
     simRate: loadRate(),
     simTime: 0,
     lastWall: 0,
-    ap: { master: false, hdgOn: false, altOn: false, navOn: false,
-          hdgTarget: 90, altTarget: 3000, obs: 90 }
+    ap: { master: false, hdgOn: false, altOn: false, navOn: false, aprOn: false, vsOn: false,
+          hdgTarget: 90, altTarget: 3000, vsTarget: 0, obs: 90 },
+    // Visual smoothing for the VOR/HSI CDI bar so the needle doesn't snap from
+    // peg-to-peg. Lerps toward the raw vorCdi() value with a ~1.8s time
+    // constant — the AP loop still uses the raw value for responsiveness.
+    cdiDisplay: 0,
+    // Radio stack — active/standby pairs. NAV1 active picks the navaid that
+    // drives the VOR/HSI; CRS knob sets the OBS for that navaid.
+    radio: {
+      nav1: { active: 117.80, standby: 113.50 },
+      nav2: { active: 112.30, standby: 115.10 },
+      com1: { active: 118.10, standby: 121.90 },
+      com2: { active: 119.45, standby: 124.20 }
+    }
   };
 
   function loadRate(){
@@ -220,27 +340,129 @@
     master: document.getElementById('ap-master'),
     toggle: document.getElementById('ap-toggle'),
     hdg: document.getElementById('ap-hdg'),
-    hdgVal: document.getElementById('ap-hdg-val'),
-    alt: document.getElementById('ap-alt'),
-    altVal: document.getElementById('ap-alt-val'),
     nav: document.getElementById('ap-nav'),
-    navStatus: document.getElementById('ap-nav-status')
+    apr: document.getElementById('ap-apr'),
+    alt: document.getElementById('ap-alt'),
+    vs: document.getElementById('ap-vs'),
+    hdgVal: document.getElementById('ap-hdg-val'),
+    crsVal: document.getElementById('ap-crs-val'),
+    altVal: document.getElementById('ap-alt-val'),
+    vsVal: document.getElementById('ap-vs-val')
   };
+  function fmtDeg(v){ return String(Math.round(((v%360)+360)%360)).padStart(3,'0') + '°'; }
+  function fmtFt(v){ return String(Math.max(0, Math.round(v))).padStart(4,'0'); }
+  function fmtVs(v){ const n = Math.round(v); return (n>=0?'+':'') + Math.abs(n).toString().padStart(3,'0').padStart(4, n<0?' ':' '); }
   function syncAp(){
     apEls.master.textContent = state.ap.master ? 'ON' : 'OFF';
     apEls.master.style.color = state.ap.master ? 'var(--accent)' : 'var(--dim)';
-    apEls.toggle.textContent = 'AP ' + (state.ap.master ? 'ON' : 'OFF');
     apEls.toggle.classList.toggle('on', state.ap.master);
     apEls.hdg.classList.toggle('on', state.ap.hdgOn);
-    apEls.alt.classList.toggle('on', state.ap.altOn);
     apEls.nav.classList.toggle('on', state.ap.navOn);
+    apEls.apr.classList.toggle('on', state.ap.aprOn);
+    apEls.alt.classList.toggle('on', state.ap.altOn);
+    apEls.vs.classList.toggle('on', state.ap.vsOn);
+    apEls.hdgVal.textContent = fmtDeg(state.ap.hdgTarget);
+    apEls.crsVal.textContent = fmtDeg(VOR.courseOBS);
+    apEls.altVal.textContent = fmtFt(state.ap.altTarget);
+    const vs = Math.round(state.ap.vsTarget);
+    apEls.vsVal.textContent = (vs>=0?'+':'-') + String(Math.abs(vs)).padStart(4,'0');
   }
+  function bumpHdg(d){ state.ap.hdgTarget = (((state.ap.hdgTarget + d)%360)+360)%360; syncAp(); }
+  function bumpCrs(d){ VOR.courseOBS = (((VOR.courseOBS + d)%360)+360)%360; state.ap.obs = VOR.courseOBS; syncAp(); }
+  function bumpAlt(d){ state.ap.altTarget = Math.max(0, Math.min(40000, state.ap.altTarget + d)); syncAp(); }
+  function bumpVs(d){ state.ap.vsTarget = Math.max(-3000, Math.min(3000, state.ap.vsTarget + d)); syncAp(); }
   apEls.toggle.addEventListener('click', () => { state.ap.master = !state.ap.master; syncAp(); });
-  apEls.hdg.addEventListener('click', () => { state.ap.hdgOn = !state.ap.hdgOn; if (state.ap.hdgOn) state.ap.navOn = false; syncAp(); });
-  apEls.alt.addEventListener('click', () => { state.ap.altOn = !state.ap.altOn; syncAp(); });
-  apEls.nav.addEventListener('click', () => { state.ap.navOn = !state.ap.navOn; if (state.ap.navOn) state.ap.hdgOn = false; syncAp(); });
-  apEls.hdgVal.addEventListener('change', () => { state.ap.hdgTarget = ((parseFloat(apEls.hdgVal.value)||0)%360+360)%360; });
-  apEls.altVal.addEventListener('change', () => { state.ap.altTarget = Math.max(0, parseFloat(apEls.altVal.value)||0); });
+  apEls.hdg.addEventListener('click', () => { state.ap.hdgOn = !state.ap.hdgOn; if (state.ap.hdgOn){ state.ap.navOn = false; state.ap.aprOn = false; } syncAp(); });
+  apEls.nav.addEventListener('click', () => { state.ap.navOn = !state.ap.navOn; if (state.ap.navOn){ state.ap.hdgOn = false; state.ap.aprOn = false; } syncAp(); });
+  apEls.apr.addEventListener('click', () => { state.ap.aprOn = !state.ap.aprOn; if (state.ap.aprOn){ state.ap.navOn = false; state.ap.hdgOn = false; } syncAp(); });
+  apEls.alt.addEventListener('click', () => { state.ap.altOn = !state.ap.altOn; if (state.ap.altOn) state.ap.vsOn = false; syncAp(); });
+  apEls.vs.addEventListener('click', () => { state.ap.vsOn = !state.ap.vsOn; if (state.ap.vsOn) state.ap.altOn = false; syncAp(); });
+  document.getElementById('ap-hdg-up').addEventListener('click', () => bumpHdg(+1));
+  document.getElementById('ap-hdg-dn').addEventListener('click', () => bumpHdg(-1));
+  document.getElementById('ap-crs-up').addEventListener('click', () => bumpCrs(+1));
+  document.getElementById('ap-crs-dn').addEventListener('click', () => bumpCrs(-1));
+  document.getElementById('ap-alt-up').addEventListener('click', () => bumpAlt(+100));
+  document.getElementById('ap-alt-dn').addEventListener('click', () => bumpAlt(-100));
+  document.getElementById('ap-vs-up').addEventListener('click', () => bumpVs(+100));
+  document.getElementById('ap-vs-dn').addEventListener('click', () => bumpVs(-100));
+  // Click-and-hold to spin a knob faster.
+  for (const id of ['ap-hdg-up','ap-hdg-dn','ap-crs-up','ap-crs-dn','ap-alt-up','ap-alt-dn','ap-vs-up','ap-vs-dn']){
+    let t = null, n = 0;
+    const el = document.getElementById(id);
+    const sign = id.endsWith('-up') ? +1 : -1;
+    const fn = id.startsWith('ap-hdg') ? bumpHdg : id.startsWith('ap-crs') ? bumpCrs : id.startsWith('ap-alt') ? bumpAlt : bumpVs;
+    const step = (id.startsWith('ap-alt') || id.startsWith('ap-vs')) ? 100 : 1;
+    const stop = () => { if (t) clearInterval(t); t = null; n = 0; };
+    el.addEventListener('mousedown', () => { n = 0; t = setInterval(() => { n++; fn(sign * step * (n>20 ? 10 : 1)); }, 90); });
+    el.addEventListener('mouseup', stop); el.addEventListener('mouseleave', stop);
+  }
+  // ===== Radio panel wiring ================================================
+  (function buildRadio(){
+    const radioEl = document.getElementById('radio-panel');
+    const rows = [
+      { key:'nav1', label:'NAV 1', step:0.05, min:108.00, max:117.95, fmt:(v)=>v.toFixed(2) },
+      { key:'nav2', label:'NAV 2', step:0.05, min:108.00, max:117.95, fmt:(v)=>v.toFixed(2) },
+      { key:'com1', label:'COM 1', step:0.025, min:118.000, max:136.975, fmt:(v)=>v.toFixed(3) },
+      { key:'com2', label:'COM 2', step:0.025, min:118.000, max:136.975, fmt:(v)=>v.toFixed(3) }
+    ];
+    function activeBadge(){
+      const f = state.radio.nav1.active.toFixed(2);
+      const navaids = window.__ifrNavaids || [];
+      const hit = navaids.find(n => Math.abs(parseFloat(n.freq) - state.radio.nav1.active) < 0.01);
+      document.getElementById('radio-active-id').textContent = 'NAV1 ' + (hit ? hit.id : '----') + ' ' + f;
+    }
+    function tuneVorFromNav1(){
+      const navaids = window.__ifrNavaids || [];
+      const hit = navaids.find(n => Math.abs(parseFloat(n.freq) - state.radio.nav1.active) < 0.01);
+      if (hit){ VOR.id = hit.id; VOR.freq = parseFloat(hit.freq).toFixed(2); VOR.lat = hit.lat; VOR.lon = hit.lon;
+        const vid = document.getElementById('vor-id'); if (vid) vid.textContent = VOR.id + ' ' + VOR.freq;
+      }
+      activeBadge();
+    }
+    window.__ifrTuneVorFromNav1 = tuneVorFromNav1;
+    window.__ifrRadioRender = () => render();
+    function render(){
+      radioEl.innerHTML = '';
+      for (const r of rows){
+        const s = state.radio[r.key];
+        const row = document.createElement('div');
+        row.className = 'rad-row';
+        row.innerHTML = `
+          <div class="id">${r.label}</div>
+          <div class="freq-stack">
+            <div class="lbl">ACTIVE</div>
+            <div class="led green" id="rad-${r.key}-act">${r.fmt(s.active)}</div>
+          </div>
+          <div class="freq-ctrl">
+            <button data-act="dn" data-k="${r.key}">−</button>
+            <button data-act="up" data-k="${r.key}">+</button>
+          </div>
+          <div class="freq-stack">
+            <div class="lbl">STANDBY</div>
+            <div class="led" id="rad-${r.key}-sby">${r.fmt(s.standby)}</div>
+          </div>
+          <button class="swap" data-swap="${r.key}" title="Swap active ⇄ standby">⇄</button>
+        `;
+        radioEl.appendChild(row);
+      }
+      activeBadge();
+    }
+    function clamp(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
+    radioEl.addEventListener('click', (e) => {
+      const t = e.target.closest('button'); if (!t) return;
+      const swap = t.getAttribute('data-swap');
+      if (swap){
+        const s = state.radio[swap]; const tmp = s.active; s.active = s.standby; s.standby = tmp;
+        render(); if (swap === 'nav1') tuneVorFromNav1(); return;
+      }
+      const k = t.getAttribute('data-k'); const dir = t.getAttribute('data-act');
+      if (!k) return;
+      const r = rows.find(x => x.key === k); const s = state.radio[k];
+      s.standby = Math.round(clamp(s.standby + (dir==='up'?+r.step:-r.step), r.min, r.max) / r.step) * r.step;
+      render();
+    });
+    render();
+  })();
   syncAp();
 
   // ===== Physics step =====================================================
@@ -261,9 +483,10 @@
 
     // Autopilot (mild authority, will not fight strong stick input)
     if (state.ap.master){
-      // Heading hold or NAV
+      // Lateral: HDG, NAV, or APR (APR uses tighter intercept)
       let hdgTarget = state.ap.hdgTarget;
-      if (state.ap.navOn){
+      let lateralActive = state.ap.hdgOn || state.ap.navOn || state.ap.aprOn;
+      if (state.ap.navOn || state.ap.aprOn){
         // PD controller for smooth VOR radial intercept
         const brgFromVor = bearingTo(VOR.lat, VOR.lon, state.lat, state.lon);
         const dev = angleDiff(brgFromVor, VOR.courseOBS); // degrees off course
@@ -279,9 +502,10 @@
         
         let intercept = 0;
         if (dist > 0.5) {
-          // PD controller gains
-          const K_p = 15; // Proportional: degrees per NM off course
-          const K_d = 2;  // Derivative: damping factor
+          // PD controller gains - APR mode uses tighter control
+          const K_p = state.ap.aprOn ? 20 : 15; // Proportional: degrees per NM off course
+          const K_d = state.ap.aprOn ? 3 : 2;   // Derivative: damping factor
+          const maxIntercept = state.ap.aprOn ? 20 : 45; // APR mode uses smaller intercept angles
           
           // Proportional term: based on cross-track error
           const proportional = crossTrackNm * K_p * crossTrackSign;
@@ -290,7 +514,7 @@
           const derivative = headingToCourse * K_d;
           
           // Combined control signal
-          intercept = clamp(proportional - derivative, -45, 45);
+          intercept = clamp(proportional - derivative, -maxIntercept, maxIntercept);
           
           // Apply deadband near centerline to prevent hunting
           if (Math.abs(crossTrackNm) < 0.05) {
@@ -303,19 +527,25 @@
       } else {
         apEls.navStatus.textContent = '—';
       }
-      if (state.ap.hdgOn || state.ap.navOn){
+      if (lateralActive){
         const err = angleDiff(hdgTarget, state.hdg);
         const targetRoll = clamp(err * 1.0, -25, 25);
         state.roll += (targetRoll - state.roll) * Math.min(1, 1.5*dt);
       }
+      // Vertical: ALT hold or VS hold (APR also nudges down on glide)
       if (state.ap.altOn){
         const errFt = state.ap.altTarget - state.alt;
-        const targetVs = clamp(errFt * 6, -1500, 1500); // fpm
+        const targetVs = clamp(errFt * 6, -1500, 1500);
         const targetPitch = clamp(targetVs / 100, -10, 10);
         state.pitch += (targetPitch - state.pitch) * Math.min(1, 1.5*dt);
+      } else if (state.ap.vsOn){
+        const targetPitch = clamp(state.ap.vsTarget / 100, -10, 10);
+        state.pitch += (targetPitch - state.pitch) * Math.min(1, 1.5*dt);
+      } else if (state.ap.aprOn){
+        // 3° glide approximation
+        const targetPitch = -3;
+        state.pitch += (targetPitch - state.pitch) * Math.min(1, 0.6*dt);
       }
-    } else {
-      apEls.navStatus.textContent = '—';
     }
 
     // Auto-level when no roll input AND AP is not commanding
@@ -341,6 +571,17 @@
     const dLat = (distNm * Math.cos(hdgRad)) / 60;
     const dLon = (distNm * Math.sin(hdgRad)) / (60 * Math.max(0.001, Math.cos(state.lat * Math.PI/180)));
     state.lat += dLat; state.lon += dLon;
+
+    // Smooth the displayed CDI toward the raw value (1st-order low-pass,
+    // tau ≈ 1.8 s) so the green deviation bar sweeps across the dial rather
+    // than snapping peg-to-peg as the aircraft crosses the radial.
+    {
+      const raw = vorCdi();
+      const tau = 1.8;
+      const a = 1 - Math.exp(-dt / tau);
+      state.cdiDisplay += (raw - state.cdiDisplay) * a;
+    }
+
     state.simTime += dt;
   }
 
@@ -361,9 +602,14 @@
   }
   function vorCdi(){
     // Course deviation: angle from VOR to A/C minus selected radial.
+    // CDI sign convention: "fly toward the bar." If the aircraft is RIGHT of
+    // the selected course (clockwise from the OBS radial as seen from the
+    // station, dev > 0), the course is to the aircraft's LEFT, so the bar
+    // must deflect LEFT — hence the negation. This sign also makes the NAV
+    // autopilot intercept turn toward the course rather than away from it.
     const brgFromVor = bearingTo(VOR.lat, VOR.lon, state.lat, state.lon);
     const dev = angleDiff(brgFromVor, VOR.courseOBS); // degrees
-    return clamp(dev / 10, -1, 1); // full scale at 10°
+    return clamp(-dev / 10, -1, 1); // full scale at 10°
   }
 
   // ===== Renderers =========================================================
@@ -476,8 +722,9 @@
     // Arrowhead
     ctx.beginPath(); ctx.moveTo(0,-R*0.9); ctx.lineTo(-7,-R*0.78); ctx.lineTo(7,-R*0.78); ctx.closePath();
     ctx.fillStyle='#ffeb3b'; ctx.fill();
-    // CDI deflection bar
-    const cdi = vorCdi();
+    // CDI deflection bar — uses the smoothed display value so the needle
+    // moves progressively across the dial instead of snapping side-to-side.
+    const cdi = state.cdiDisplay;
     const deflectPx = cdi * R*0.5;
     ctx.strokeStyle = cdi>0?'#00ff9d':'#00ff9d';
     ctx.lineWidth = 3;
@@ -510,64 +757,141 @@
     const { ctx, w, h } = setupCanvas(c);
     ctx.clearRect(0,0,w,h);
     const cx = w/2, cy = h/2;
-    const scaleNm = 5;
+
+    // The zoomable/pannable moving map. main.js owns state.map; we fall back
+    // to a sensible default if the module hasn't booted yet.
+    const m = state.map || { scaleNm: 5, centerLat: state.lat, centerLon: state.lon, follow: true };
+    const scaleNm = m.scaleNm;
+    const centerLat = m.follow ? state.lat : m.centerLat;
+    const centerLon = m.follow ? state.lon : m.centerLon;
     const pxPerNm = Math.min(w,h)/2 / scaleNm;
-    document.getElementById('map-scale').textContent = scaleNm + ' NM';
+    document.getElementById('map-scale').textContent = (scaleNm < 1 ? scaleNm.toFixed(1) : Math.round(scaleNm)) + ' NM';
+
+    // World → screen helper (north-up).
+    function project(lat, lon){
+      const dN = (lat - centerLat) * 60; // NM north
+      const dE = (lon - centerLon) * 60 * Math.cos(centerLat*Math.PI/180);
+      return { x: cx + dE * pxPerNm, y: cy - dN * pxPerNm };
+    }
 
     // BG grid
     ctx.fillStyle = '#070b10'; ctx.fillRect(0,0,w,h);
     ctx.strokeStyle = '#10202f'; ctx.lineWidth = 1;
-    for (let i=-scaleNm;i<=scaleNm;i++){
-      ctx.beginPath(); ctx.moveTo(cx + i*pxPerNm, 0); ctx.lineTo(cx + i*pxPerNm, h); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(0, cy + i*pxPerNm); ctx.lineTo(w, cy + i*pxPerNm); ctx.stroke();
+    const gridStep = scaleNm <= 5 ? 1 : scaleNm <= 25 ? 5 : scaleNm <= 100 ? 25 : 100;
+    const gridPx = gridStep * pxPerNm;
+    if (gridPx > 6){
+      for (let x = cx % gridPx; x < w; x += gridPx){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke(); }
+      for (let y = cy % gridPx; y < h; y += gridPx){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); }
     }
-    // Range rings
-    ctx.strokeStyle = '#1f3a52';
-    for (const r of [1,2,3,4,5]){
+    // Range rings centred on map centre.
+    ctx.strokeStyle = '#1f3a52'; ctx.fillStyle = '#3a5a82'; ctx.font='9px monospace'; ctx.textAlign='left';
+    const ringStep = gridStep;
+    for (let r = ringStep; r <= scaleNm; r += ringStep){
       ctx.beginPath(); ctx.arc(cx,cy, r*pxPerNm, 0, Math.PI*2); ctx.stroke();
-      ctx.fillStyle = '#3a5a82'; ctx.font='9px monospace'; ctx.textAlign='left';
       ctx.fillText(r+'NM', cx + r*pxPerNm + 2, cy - 2);
     }
 
-    // VOR station (track-up: rotate world by -hdg)
-    ctx.save();
-    ctx.translate(cx,cy);
-    ctx.rotate(-state.hdg*Math.PI/180);
-    // VOR marker
-    const dN = (VOR.lat - state.lat) * 60; // NM north
-    const dE = (VOR.lon - state.lon) * 60 * Math.cos(state.lat*Math.PI/180);
-    const vx = dE * pxPerNm, vy = -dN * pxPerNm;
-    ctx.fillStyle = '#00ff9d'; ctx.strokeStyle = '#00ff9d'; ctx.lineWidth = 2;
-    ctx.beginPath();
-    for (let i=0;i<6;i++){
-      const a = i*Math.PI/3;
-      const x = vx + Math.cos(a)*8, y = vy + Math.sin(a)*8;
-      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    // Active mission route polyline (drawn under markers).
+    const route = window.__ifrActiveRoute;
+    if (Array.isArray(route) && route.length){
+      ctx.strokeStyle = 'rgba(0,255,157,.55)'; ctx.lineWidth = 2;
+      ctx.beginPath();
+      const a = project(state.lat, state.lon); ctx.moveTo(a.x, a.y);
+      for (const wp of route){ if (!wp) continue; const p = project(wp.lat, wp.lon); ctx.lineTo(p.x, p.y); }
+      ctx.stroke();
+
+      // Per-leg course (CRS) and distance labels at the midpoint of each
+      // segment so the pilot can read the heading to fly between waypoints.
+      const legs = [{ lat: state.lat, lon: state.lon }, ...route.filter(Boolean)];
+      ctx.font = '10px monospace';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      for (let i = 0; i < legs.length - 1; i++){
+        const A = legs[i], B = legs[i+1];
+        const pa = project(A.lat, A.lon), pb = project(B.lat, B.lon);
+        // Skip very short on-screen segments.
+        const segPx = Math.hypot(pb.x - pa.x, pb.y - pa.y);
+        if (segPx < 36) continue;
+        const crs = Math.round(bearingTo(A.lat, A.lon, B.lat, B.lon));
+        const dist = haversineNm(A.lat, A.lon, B.lat, B.lon);
+        const label = `CRS ${String(crs).padStart(3,'0')}° · ${dist.toFixed(1)} NM`;
+        const mx = (pa.x + pb.x) / 2;
+        const my = (pa.y + pb.y) / 2;
+        // Rotate text to align with the leg, but flip if it would render upside-down.
+        let ang = Math.atan2(pb.y - pa.y, pb.x - pa.x);
+        if (ang > Math.PI/2 || ang < -Math.PI/2) ang += Math.PI;
+        ctx.save();
+        ctx.translate(mx, my);
+        ctx.rotate(ang);
+        const padX = 5, padY = 2;
+        const tw = ctx.measureText(label).width;
+        // Dark pill so the label stays readable over the green route line.
+        ctx.fillStyle = 'rgba(7,11,16,.85)';
+        ctx.strokeStyle = 'rgba(0,255,157,.55)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        const rectX = -tw/2 - padX, rectY = -7 - padY, rectW = tw + 2*padX, rectH = 14 + 2*padY;
+        if (ctx.roundRect) { ctx.roundRect(rectX, rectY, rectW, rectH, 4); }
+        else { ctx.rect(rectX, rectY, rectW, rectH); }
+        ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#cfe7ff';
+        ctx.fillText(label, 0, 1);
+        ctx.restore();
+      }
+      ctx.textBaseline = 'alphabetic';
     }
-    ctx.closePath(); ctx.stroke();
-    ctx.fillStyle = '#00ff9d'; ctx.beginPath(); ctx.arc(vx,vy,2,0,Math.PI*2); ctx.fill();
-    ctx.fillStyle = '#cfe7ff'; ctx.font = '10px monospace'; ctx.textAlign='left';
-    ctx.fillText(VOR.id+' '+VOR.freq, vx + 12, vy + 4);
 
-    // OBS course line through VOR
+    // Navaid markers (loaded by main.js).
+    const navaids = window.__ifrNavaids || [{ id: VOR.id, freq: VOR.freq, lat: VOR.lat, lon: VOR.lon, type: 'VORDME' }];
+    ctx.lineWidth = 2;
+    for (const n of navaids){
+      const p = project(n.lat, n.lon);
+      if (p.x < -20 || p.x > w+20 || p.y < -20 || p.y > h+20) continue;
+      const isIls = n.type === 'ILS';
+      ctx.strokeStyle = isIls ? '#ffb547' : '#00ff9d';
+      ctx.fillStyle   = isIls ? '#ffb547' : '#00ff9d';
+      ctx.beginPath();
+      // Hexagon for VORs, square for ILS.
+      if (isIls){
+        ctx.rect(p.x-6, p.y-6, 12, 12);
+      } else {
+        for (let i=0;i<6;i++){
+          const ang = i*Math.PI/3;
+          const x = p.x + Math.cos(ang)*7, y = p.y + Math.sin(ang)*7;
+          if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+        }
+        ctx.closePath();
+      }
+      ctx.stroke();
+      ctx.beginPath(); ctx.arc(p.x, p.y, 2, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#cfe7ff'; ctx.font = '10px monospace'; ctx.textAlign='left';
+      ctx.fillText(n.id, p.x + 9, p.y + 4);
+      // Frequency under the id (and runway heading for ILS).
+      if (n.freq != null){
+        ctx.fillStyle = isIls ? '#ffb547' : '#7cd8ff';
+        ctx.font = '9px monospace';
+        const f = (typeof n.freq === 'number' ? n.freq : parseFloat(n.freq)).toFixed(2);
+        ctx.fillText(f, p.x + 9, p.y + 15);
+        if (isIls && typeof n.runway_heading === 'number'){
+          ctx.fillStyle = '#5b7a99';
+          ctx.fillText('RWY ' + String(n.runway_heading).padStart(3,'0'), p.x + 9, p.y + 25);
+        }
+      }
+    }
+
+    // Aircraft icon (rotated by heading), drawn at its world position.
+    const ap = project(state.lat, state.lon);
     ctx.save();
-    ctx.translate(vx, vy);
-    ctx.rotate(VOR.courseOBS*Math.PI/180);
-    ctx.strokeStyle = 'rgba(255,235,59,.6)'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(0,-200); ctx.lineTo(0,200); ctx.stroke();
-    ctx.restore();
-    ctx.restore();
-
-    // Aircraft (fixed at center, pointing up)
+    ctx.translate(ap.x, ap.y);
+    ctx.rotate(state.hdg*Math.PI/180);
     ctx.fillStyle = '#ffeb3b';
     ctx.beginPath();
-    ctx.moveTo(cx, cy-10); ctx.lineTo(cx-7, cy+8); ctx.lineTo(cx, cy+4); ctx.lineTo(cx+7, cy+8);
+    ctx.moveTo(0,-10); ctx.lineTo(-7,8); ctx.lineTo(0,4); ctx.lineTo(7,8);
     ctx.closePath(); ctx.fill();
+    ctx.restore();
 
-    // North indicator
+    // North indicator (north is always up in this map).
     ctx.save();
     ctx.translate(w-22, 22);
-    ctx.rotate(-state.hdg*Math.PI/180);
     ctx.strokeStyle = '#cfe7ff'; ctx.fillStyle = '#cfe7ff';
     ctx.beginPath(); ctx.moveTo(0,-10); ctx.lineTo(-5,8); ctx.lineTo(5,8); ctx.closePath(); ctx.fill();
     ctx.restore();
@@ -620,8 +944,182 @@
   // Test hooks
   window.__ifrPilot = { state, RATES, setRate, cycleRate, step, VOR, vorCdi, bearingTo };
 
+  // ===== Map navaid popup =================================================
+  // Click a VOR/ILS marker on the moving map to see its frequency, type,
+  // and (for ILS) runway heading. Clicking empty map space closes the popup.
+  (function navaidPopup(){
+    const popup = document.getElementById('map-popup');
+    const mapSec = document.getElementById('map');
+    let downAt = null;
+    cMap.addEventListener('mousedown', (e) => { downAt = { x: e.clientX, y: e.clientY }; });
+    cMap.addEventListener('click', (e) => {
+      // Suppress click that was actually a pan-drag (>4px of motion).
+      if (downAt){
+        const moved = Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y);
+        downAt = null;
+        if (moved > 4) return;
+      }
+      const rect = cMap.getBoundingClientRect();
+      const px = e.clientX - rect.left, py = e.clientY - rect.top;
+      const w = rect.width, h = rect.height;
+      const m = state.map || { scaleNm: 5, centerLat: state.lat, centerLon: state.lon, follow: true };
+      const cx = w/2, cy = h/2;
+      const centerLat = m.follow ? state.lat : m.centerLat;
+      const centerLon = m.follow ? state.lon : m.centerLon;
+      const pxPerNm = Math.min(w,h)/2 / m.scaleNm;
+      const navaids = window.__ifrNavaids || [];
+      let best = null, bestD = Infinity;
+      for (const n of navaids){
+        const dN = (n.lat - centerLat) * 60;
+        const dE = (n.lon - centerLon) * 60 * Math.cos(centerLat*Math.PI/180);
+        const x = cx + dE * pxPerNm, y = cy - dN * pxPerNm;
+        const d = Math.hypot(x - px, y - py);
+        if (d < bestD){ bestD = d; best = { n, x, y }; }
+      }
+      if (!best || bestD > 14){ popup.style.display = 'none'; return; }
+      showPopup(best.n, best.x, best.y);
+    });
+    popup.addEventListener('click', (e) => {
+      const t = e.target;
+      if (t && t.classList.contains('pop-close')){ popup.style.display = 'none'; return; }
+      if (t && t.classList.contains('pop-tune')){
+        const freq = parseFloat(t.getAttribute('data-freq'));
+        if (!Number.isNaN(freq)){
+          state.radio.nav1.standby = Math.round(freq*100)/100;
+          if (window.__ifrRadioRender) window.__ifrRadioRender();
+          showToast('NAV1 STBY ' + freq.toFixed(2));
+        }
+      }
+    });
+    function showPopup(n, x, y){
+      const isIls = n.type === 'ILS';
+      const freq = (typeof n.freq === 'number' ? n.freq : parseFloat(n.freq)).toFixed(2);
+      const rows = [
+        `<div class="pop-id ${isIls?'ils':''}"><span>${n.id}</span><span>${n.type||''}</span></div>`,
+        n.name ? `<div class="pop-name">${n.name}</div>` : '',
+        `<div class="pop-row"><span>FREQ</span><b>${freq}</b></div>`,
+        isIls && typeof n.runway_heading === 'number' ? `<div class="pop-row"><span>RWY HDG</span><b>${String(n.runway_heading).padStart(3,'0')}°</b></div>` : '',
+        isIls && typeof n.glideslope_deg === 'number' ? `<div class="pop-row"><span>GS</span><b>${n.glideslope_deg.toFixed(1)}°</b></div>` : '',
+        `<div class="pop-row"><span>LAT/LON</span><b>${n.lat.toFixed(3)}, ${n.lon.toFixed(3)}</b></div>`,
+        `<button class="pop-tune" data-freq="${freq}" type="button">TUNE NAV1 STBY → ${freq}</button>`,
+        `<span class="pop-close" title="Close">×</span>`
+      ].join('');
+      popup.innerHTML = rows;
+      // Position relative to the #map section (popup is a child of it).
+      const secRect = mapSec.getBoundingClientRect();
+      const canRect = cMap.getBoundingClientRect();
+      let left = (canRect.left - secRect.left) + x + 14;
+      let top  = (canRect.top  - secRect.top)  + y - 8;
+      // Keep on-screen within the section.
+      const pw = 200, ph = 140;
+      if (left + pw > secRect.width) left = (canRect.left - secRect.left) + x - pw - 14;
+      if (top + ph > secRect.height) top = secRect.height - ph - 4;
+      if (top < 4) top = 4;
+      popup.style.left = left + 'px';
+      popup.style.top = top + 'px';
+      popup.style.display = 'block';
+    }
+  })();
+
+  // ===== Knob arming + mouse-wheel scroll =================================
+  // Click an LED to "arm" a knob, then scroll the mouse wheel anywhere to
+  // change it. Click again (or click another knob/elsewhere) to disarm.
+  (function knobWheel(){
+    let armed = null; // { id, kind, step, fn, container }
+    function disarm(){
+      if (armed && armed.container) armed.container.classList.remove('armed');
+      armed = null;
+    }
+    const apKnobMap = {
+      'ap-hdg-val': { fn: bumpHdg,  step: 1,   big: 5,   label: 'HDG' },
+      'ap-crs-val': { fn: bumpCrs,  step: 1,   big: 5,   label: 'CRS' },
+      'ap-alt-val': { fn: bumpAlt,  step: 100, big: 1000,label: 'ALT' },
+      'ap-vs-val':  { fn: bumpVs,   step: 100, big: 500, label: 'VS'  }
+    };
+    Object.keys(apKnobMap).forEach((id) => {
+      const led = document.getElementById(id);
+      if (!led) return;
+      const container = led.closest('.ap-knob');
+      led.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (armed && armed.id === id){ disarm(); return; }
+        disarm();
+        armed = { id, kind:'ap', container, ...apKnobMap[id] };
+        container.classList.add('armed');
+        showToast('SCROLL = ' + apKnobMap[id].label);
+      });
+    });
+    // Radio standby LEDs are armable too.
+    function wireRadioRowsArming(){
+      const radioEl = document.getElementById('radio-panel');
+      const meta = {
+        nav1: { step: 0.05, big: 1.00, min: 108.00, max: 117.95, dec: 2 },
+        nav2: { step: 0.05, big: 1.00, min: 108.00, max: 117.95, dec: 2 },
+        com1: { step: 0.025,big: 1.00, min: 118.000,max: 136.975,dec: 3 },
+        com2: { step: 0.025,big: 1.00, min: 118.000,max: 136.975,dec: 3 }
+      };
+      radioEl.querySelectorAll('[id^="rad-"][id$="-sby"]').forEach((led) => {
+        const k = led.id.replace('rad-','').replace('-sby',''); // e.g. nav1
+        if (!meta[k]) return;
+        const container = led.closest('.rad-row');
+        led.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (armed && armed.id === led.id){ disarm(); return; }
+          disarm();
+          armed = {
+            id: led.id, kind:'radio', container,
+            step: meta[k].step, big: meta[k].big,
+            label: k.toUpperCase() + ' STBY',
+            fn: (delta) => {
+              const m = meta[k]; const s = state.radio[k];
+              s.standby = Math.max(m.min, Math.min(m.max, s.standby + delta));
+              s.standby = Math.round(s.standby / m.step) * m.step;
+              if (window.__ifrRadioRender) window.__ifrRadioRender();
+              // Re-attach armed indicator after re-render.
+              const el = document.getElementById(led.id);
+              if (el){
+                const c = el.closest('.rad-row');
+                if (c){ c.classList.add('armed'); armed.container = c; }
+              }
+            }
+          };
+          container.classList.add('armed');
+          showToast('SCROLL = ' + armed.label);
+        });
+      });
+    }
+    wireRadioRowsArming();
+    // The radio panel re-renders on every change; re-bind after each render.
+    const origRender = window.__ifrRadioRender;
+    window.__ifrRadioRender = function(){
+      if (origRender) origRender();
+      wireRadioRowsArming();
+    };
+    // Disarm when clicking outside knobs/leds.
+    document.addEventListener('click', (e) => {
+      if (!armed) return;
+      const t = e.target;
+      if (t.closest && (t.closest('.ap-knob.armed') || t.closest('.rad-row.armed'))) return;
+      disarm();
+    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') disarm(); });
+    // Wheel handler — only acts when a knob is armed.
+    window.addEventListener('wheel', (e) => {
+      if (!armed) return;
+      // Don't interfere with map zoom — map has its own wheel handler that
+      // calls preventDefault() before this fires.
+      if (e.target === cMap) return;
+      e.preventDefault();
+      const sign = e.deltaY < 0 ? +1 : -1;
+      const big = e.shiftKey;
+      const delta = sign * (big ? armed.big : armed.step);
+      armed.fn(delta);
+    }, { passive: false });
+  })();
+
   requestAnimationFrame((t) => { state.lastWall = t; requestAnimationFrame(frame); });
 })();
 </script>
+<script type="module" src="js/main.js"></script>
 </body>
 </html>
