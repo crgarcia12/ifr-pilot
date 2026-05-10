@@ -1,0 +1,21 @@
+<svg width="1400" height="800" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#06090d;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0d141d;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="1400" height="800" fill="url(#bg)"/>
+  <text x="700" y="200" font-family="monospace" font-size="48" fill="#00ff9d" text-anchor="middle" letter-spacing="0.2em">IFR PILOT</text>
+  <text x="700" y="280" font-family="monospace" font-size="20" fill="#cfe7ff" text-anchor="middle">Browser-Based Instrument Flight Rules Simulator</text>
+  <rect x="100" y="350" width="400" height="350" fill="#0d141d" stroke="#1f2f44" stroke-width="2" rx="8"/>
+  <text x="300" y="385" font-family="monospace" font-size="14" fill="#5b7a99" text-anchor="middle">ATTITUDE INDICATOR</text>
+  <circle cx="300" cy="525" r="120" fill="#070b10" stroke="#00ff9d" stroke-width="2"/>
+  <line x1="300" y1="525" x2="300" y2="425" stroke="#ffb547" stroke-width="3"/>
+  <rect x="550" y="350" width="400" height="350" fill="#0d141d" stroke="#1f2f44" stroke-width="2" rx="8"/>
+  <text x="750" y="385" font-family="monospace" font-size="14" fill="#5b7a99" text-anchor="middle">VOR / HSI</text>
+  <circle cx="750" cy="525" r="120" fill="#070b10" stroke="#00ff9d" stroke-width="2"/>
+  <rect x="1000" y="350" width="300" height="350" fill="#0d141d" stroke="#1f2f44" stroke-width="2" rx="8"/>
+  <text x="1150" y="385" font-family="monospace" font-size="14" fill="#5b7a99" text-anchor="middle">MOVING MAP</text>
+  <text x="700" y="760" font-family="monospace" font-size="16" fill="#5b7a99" text-anchor="middle">🎮 HDG: 240° | ALT: 5000 ft | IAS: 140 kt | V/S: +500 fpm</text>
+</svg>
