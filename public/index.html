@@ -264,15 +264,41 @@
       // Heading hold or NAV
       let hdgTarget = state.ap.hdgTarget;
       if (state.ap.navOn){
-        // Steer toward VOR radial (course OBS) intercept
-        const brg = bearingTo(state.lat, state.lon, VOR.lat, VOR.lon);
-        const cdi = vorCdi(); // -1..+1 (deflection)
-        // Target a 30° intercept reduced as CDI centers
-        const intercept = clamp(cdi * 30, -45, 45);
-        hdgTarget = (VOR.courseOBS + intercept + 360) % 360;
-        // If we're past the station, just track outbound on the course
+        // PD controller for smooth VOR radial intercept
+        const brgFromVor = bearingTo(VOR.lat, VOR.lon, state.lat, state.lon);
+        const dev = angleDiff(brgFromVor, VOR.courseOBS); // degrees off course
+        const cdi = clamp(dev / 10, -1, 1); // normalized -1..+1
         const dist = haversineNm(state.lat, state.lon, VOR.lat, VOR.lon);
-        if (dist < 0.5) hdgTarget = VOR.courseOBS;
+        
+        // Calculate cross-track distance in NM (perpendicular distance to course line)
+        const crossTrackNm = dist * Math.sin(Math.abs(dev) * Math.PI / 180);
+        const crossTrackSign = Math.sign(dev); // which side of course line
+        
+        // Calculate heading difference from course (for damping)
+        const headingToCourse = angleDiff(state.hdg, VOR.courseOBS);
+        
+        let intercept = 0;
+        if (dist > 0.5) {
+          // PD controller gains
+          const K_p = 15; // Proportional: degrees per NM off course
+          const K_d = 2;  // Derivative: damping factor
+          
+          // Proportional term: based on cross-track error
+          const proportional = crossTrackNm * K_p * crossTrackSign;
+          
+          // Derivative term: damping based on heading convergence
+          const derivative = headingToCourse * K_d;
+          
+          // Combined control signal
+          intercept = clamp(proportional - derivative, -45, 45);
+          
+          // Apply deadband near centerline to prevent hunting
+          if (Math.abs(crossTrackNm) < 0.05) {
+            intercept *= 0.5; // Reduce gain by 50% when very close
+          }
+        }
+        
+        hdgTarget = (VOR.courseOBS + intercept + 360) % 360;
         apEls.navStatus.textContent = 'CDI ' + cdi.toFixed(2) + '  ' + dist.toFixed(1) + ' NM';
       } else {
         apEls.navStatus.textContent = '—';
