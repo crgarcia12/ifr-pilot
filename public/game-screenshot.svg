@@ -1,21 +1,137 @@
-<svg width="1400" height="800" xmlns="http://www.w3.org/2000/svg">
+<svg width="1400" height="900" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="0%" y2="100%">
       <stop offset="0%" style="stop-color:#06090d;stop-opacity:1" />
       <stop offset="100%" style="stop-color:#0d141d;stop-opacity:1" />
     </linearGradient>
+    <radialGradient id="gauge" cx="50%" cy="50%">
+      <stop offset="0%" style="stop-color:#070b10;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0a121b;stop-opacity:1" />
+    </radialGradient>
   </defs>
-  <rect width="1400" height="800" fill="url(#bg)"/>
-  <text x="700" y="200" font-family="monospace" font-size="48" fill="#00ff9d" text-anchor="middle" letter-spacing="0.2em">IFR PILOT</text>
-  <text x="700" y="280" font-family="monospace" font-size="20" fill="#cfe7ff" text-anchor="middle">Browser-Based Instrument Flight Rules Simulator</text>
-  <rect x="100" y="350" width="400" height="350" fill="#0d141d" stroke="#1f2f44" stroke-width="2" rx="8"/>
-  <text x="300" y="385" font-family="monospace" font-size="14" fill="#5b7a99" text-anchor="middle">ATTITUDE INDICATOR</text>
-  <circle cx="300" cy="525" r="120" fill="#070b10" stroke="#00ff9d" stroke-width="2"/>
-  <line x1="300" y1="525" x2="300" y2="425" stroke="#ffb547" stroke-width="3"/>
-  <rect x="550" y="350" width="400" height="350" fill="#0d141d" stroke="#1f2f44" stroke-width="2" rx="8"/>
-  <text x="750" y="385" font-family="monospace" font-size="14" fill="#5b7a99" text-anchor="middle">VOR / HSI</text>
-  <circle cx="750" cy="525" r="120" fill="#070b10" stroke="#00ff9d" stroke-width="2"/>
-  <rect x="1000" y="350" width="300" height="350" fill="#0d141d" stroke="#1f2f44" stroke-width="2" rx="8"/>
-  <text x="1150" y="385" font-family="monospace" font-size="14" fill="#5b7a99" text-anchor="middle">MOVING MAP</text>
-  <text x="700" y="760" font-family="monospace" font-size="16" fill="#5b7a99" text-anchor="middle">🎮 HDG: 240° | ALT: 5000 ft | IAS: 140 kt | V/S: +500 fpm</text>
+  
+  <!-- Background -->
+  <rect width="1400" height="900" fill="url(#bg)"/>
+  
+  <!-- Header -->
+  <rect x="8" y="8" width="1384" height="60" fill="#0d141d" stroke="#1f2f44" stroke-width="2" rx="8"/>
+  <text x="24" y="42" font-family="monospace" font-size="16" fill="#00ff9d" letter-spacing="0.2em" font-weight="bold">IFR PILOT</text>
+  <text x="200" y="38" font-family="monospace" font-size="13" fill="#cfe7ff">HDG <tspan fill="#00ff9d" font-weight="600">240</tspan>°</text>
+  <text x="320" y="38" font-family="monospace" font-size="13" fill="#cfe7ff">ALT <tspan fill="#00ff9d" font-weight="600">5000</tspan> ft</text>
+  <text x="450" y="38" font-family="monospace" font-size="13" fill="#cfe7ff">IAS <tspan fill="#00ff9d" font-weight="600">140</tspan> kt</text>
+  <text x="580" y="38" font-family="monospace" font-size="13" fill="#cfe7ff">V/S <tspan fill="#00ff9d" font-weight="600">+500</tspan> fpm</text>
+  
+  <!-- Mission HUD -->
+  <text x="900" y="38" font-family="monospace" font-size="13" fill="#ffb547" font-weight="600">MISSION M1 ACTIVE</text>
+  <text x="1100" y="38" font-family="monospace" font-size="12" fill="#5b7a99">WPT 1/3: ROS 112.30</text>
+  
+  <!-- Attitude Indicator -->
+  <rect x="16" y="76" width="430" height="390" fill="#0d141d" stroke="#1f2f44" stroke-width="2" rx="8"/>
+  <text x="231" y="100" font-family="monospace" font-size="11" fill="#5b7a99" text-anchor="middle" letter-spacing="0.15em">ATTITUDE INDICATOR</text>
+  <text x="420" y="100" font-family="monospace" font-size="11" fill="#00ff9d" font-weight="bold">AI</text>
+  <circle cx="231" cy="270" r="140" fill="url(#gauge)" stroke="#00ff9d" stroke-width="2"/>
+  <!-- Horizon line -->
+  <line x1="111" y1="270" x2="351" y2="270" stroke="#cfe7ff" stroke-width="3"/>
+  <!-- Aircraft symbol -->
+  <circle cx="231" cy="270" r="6" fill="#ffb547"/>
+  <line x1="185" y1="270" x2="215" y2="270" stroke="#ffb547" stroke-width="4"/>
+  <line x1="247" y1="270" x2="277" y2="270" stroke="#ffb547" stroke-width="4"/>
+  <!-- Pitch ladder -->
+  <line x1="201" y1="240" x2="261" y2="240" stroke="#cfe7ff" stroke-width="1" opacity="0.5"/>
+  <text x="270" y="243" font-family="monospace" font-size="10" fill="#cfe7ff" opacity="0.7">10</text>
+  <line x1="201" y1="300" x2="261" y2="300" stroke="#cfe7ff" stroke-width="1" opacity="0.5"/>
+  <text x="270" y="303" font-family="monospace" font-size="10" fill="#cfe7ff" opacity="0.7">-10</text>
+  
+  <!-- VOR/HSI -->
+  <rect x="454" y="76" width="430" height="390" fill="#0d141d" stroke="#1f2f44" stroke-width="2" rx="8"/>
+  <text x="669" y="100" font-family="monospace" font-size="11" fill="#5b7a99" text-anchor="middle" letter-spacing="0.15em">VOR / HSI</text>
+  <text x="860" y="100" font-family="monospace" font-size="11" fill="#00ff9d" font-weight="bold">112.30 ROS</text>
+  <circle cx="669" cy="270" r="140" fill="url(#gauge)" stroke="#00ff9d" stroke-width="2"/>
+  <!-- Course arrow pointing to waypoint -->
+  <line x1="669" y1="150" x2="669" y2="390" stroke="#ffb547" stroke-width="3"/>
+  <polygon points="669,140 659,160 679,160" fill="#ffb547"/>
+  <!-- CDI needle slightly off center (flying to VOR) -->
+  <line x1="680" y1="200" x2="680" y2="340" stroke="#00ff9d" stroke-width="4"/>
+  <circle cx="680" cy="270" r="8" fill="#00ff9d"/>
+  <!-- DME display -->
+  <rect x="619" y="380" width="100" height="30" fill="#0a121b" stroke="#1f2f44" rx="4"/>
+  <text x="669" y="400" font-family="monospace" font-size="14" fill="#00ff9d" text-anchor="middle" font-weight="bold">85.3</text>
+  <text x="669" y="414" font-family="monospace" font-size="9" fill="#5b7a99" text-anchor="middle">NM</text>
+  
+  <!-- Moving Map -->
+  <rect x="892" y="76" width="492" height="390" fill="#0d141d" stroke="#1f2f44" stroke-width="2" rx="8"/>
+  <text x="1138" y="100" font-family="monospace" font-size="11" fill="#5b7a99" text-anchor="middle" letter-spacing="0.15em">MOVING MAP</text>
+  <text x="1360" y="100" font-family="monospace" font-size="11" fill="#00ff9d" font-weight="bold">50 NM</text>
+  <!-- Map background -->
+  <rect x="904" y="110" width="468" height="345" fill="#070b10"/>
+  <!-- Aircraft position (center) -->
+  <circle cx="1138" cy="282" r="8" fill="#ffb547"/>
+  <polygon points="1138,270 1133,287 1143,287" fill="#ffb547"/>
+  <!-- Flight path line to ROS VOR -->
+  <line x1="1138" y1="282" x2="1050" y2="200" stroke="#00ff9d" stroke-width="2" stroke-dasharray="5,3"/>
+  <!-- ROS VOR waypoint -->
+  <circle cx="1050" cy="200" r="10" fill="none" stroke="#00ff9d" stroke-width="2"/>
+  <line x1="1040" y1="200" x2="1060" y2="200" stroke="#00ff9d" stroke-width="2"/>
+  <line x1="1050" y1="190" x2="1050" y2="210" stroke="#00ff9d" stroke-width="2"/>
+  <text x="1050" y="180" font-family="monospace" font-size="10" fill="#00ff9d" text-anchor="middle" font-weight="bold">ROS</text>
+  <text x="1050" y="230" font-family="monospace" font-size="9" fill="#5b7a99" text-anchor="middle">112.30</text>
+  <!-- SNT VOR (next waypoint) -->
+  <circle cx="1200" cy="320" r="8" fill="none" stroke="#5b7a99" stroke-width="2"/>
+  <text x="1200" y="335" font-family="monospace" font-size="9" fill="#5b7a99" text-anchor="middle">SNT</text>
+  <!-- AEP ILS (final waypoint) -->
+  <rect x="1290" y="370" width="16" height="16" fill="none" stroke="#5b7a99" stroke-width="2"/>
+  <text x="1298" y="400" font-family="monospace" font-size="9" fill="#5b7a99" text-anchor="middle">AEP</text>
+  
+  <!-- Autopilot Panel -->
+  <rect x="16" y="474" width="1368" height="130" fill="#0d141d" stroke="#1f2f44" stroke-width="2" rx="8"/>
+  <text x="690" y="495" font-family="monospace" font-size="11" fill="#5b7a99" text-anchor="middle" letter-spacing="0.15em">AUTOPILOT</text>
+  
+  <!-- HDG Mode -->
+  <rect x="30" y="510" width="140" height="80" fill="#0a121b" stroke="#1f2f44" rx="6"/>
+  <text x="100" y="530" font-family="monospace" font-size="10" fill="#5b7a99" text-anchor="middle">HDG</text>
+  <rect x="50" y="540" width="100" height="35" fill="#00ff9d" rx="4"/>
+  <text x="100" y="563" font-family="monospace" font-size="16" fill="#001b10" text-anchor="middle" font-weight="bold">240°</text>
+  
+  <!-- ALT Mode -->
+  <rect x="190" y="510" width="140" height="80" fill="#0a121b" stroke="#1f2f44" rx="6"/>
+  <text x="260" y="530" font-family="monospace" font-size="10" fill="#5b7a99" text-anchor="middle">ALT</text>
+  <rect x="210" y="540" width="100" height="35" fill="#00ff9d" rx="4"/>
+  <text x="260" y="563" font-family="monospace" font-size="16" fill="#001b10" text-anchor="middle" font-weight="bold">5000</text>
+  
+  <!-- IAS Mode -->
+  <rect x="350" y="510" width="140" height="80" fill="#0a121b" stroke="#1f2f44" rx="6"/>
+  <text x="420" y="530" font-family="monospace" font-size="10" fill="#5b7a99" text-anchor="middle">IAS</text>
+  <rect x="370" y="540" width="100" height="35" fill="#00ff9d" rx="4"/>
+  <text x="420" y="563" font-family="monospace" font-size="16" fill="#001b10" text-anchor="middle" font-weight="bold">140</text>
+  
+  <!-- V/S -->
+  <rect x="510" y="510" width="140" height="80" fill="#0a121b" stroke="#1f2f44" rx="6"/>
+  <text x="580" y="530" font-family="monospace" font-size="10" fill="#5b7a99" text-anchor="middle">V/S</text>
+  <text x="580" y="563" font-family="monospace" font-size="16" fill="#00ff9d" text-anchor="middle" font-weight="bold">+500</text>
+  
+  <!-- NAV Radio -->
+  <rect x="900" y="510" width="230" height="80" fill="#0a121b" stroke="#1f2f44" rx="6"/>
+  <text x="1015" y="530" font-family="monospace" font-size="10" fill="#5b7a99" text-anchor="middle">NAV1</text>
+  <text x="1015" y="563" font-family="monospace" font-size="18" fill="#00ff9d" text-anchor="middle" font-weight="bold">112.30</text>
+  
+  <!-- Mission Control -->
+  <rect x="1150" y="510" width="210" height="80" fill="#0a121b" stroke="#ffb547" stroke-width="2" rx="6"/>
+  <text x="1255" y="530" font-family="monospace" font-size="10" fill="#ffb547" text-anchor="middle" font-weight="bold">MISSION ACTIVE</text>
+  <text x="1255" y="555" font-family="monospace" font-size="14" fill="#cfe7ff" text-anchor="middle">ROS → SNT → AEP</text>
+  <text x="1255" y="578" font-family="monospace" font-size="11" fill="#5b7a99" text-anchor="middle">WPT 1 of 3</text>
+  
+  <!-- Footer controls -->
+  <rect x="16" y="612" width="1368" height="60" fill="#0d141d" stroke="#1f2f44" stroke-width="2" rx="8"/>
+  <text x="100" y="647" font-family="monospace" font-size="12" fill="#5b7a99">Rate:</text>
+  <rect x="150" y="630" width="50" height="30" fill="#00ff9d" rx="4"/>
+  <text x="175" y="651" font-family="monospace" font-size="14" fill="#001b10" text-anchor="middle" font-weight="bold">1x</text>
+  
+  <text x="250" y="647" font-family="monospace" font-size="11" fill="#5b7a99">⌨ Controls: WASD=Pitch/Bank  Q/E=Rudder  ↑/↓=Throttle  [/]=IAS  +/-=Rate</text>
+  
+  <!-- Status indicator -->
+  <circle cx="1340" cy="647" r="8" fill="#00ff9d"/>
+  <text x="1310" y="651" font-family="monospace" font-size="11" fill="#5b7a99" text-anchor="end">FLYING</text>
+  
+  <!-- Branding -->
+  <text x="700" y="870" font-family="monospace" font-size="12" fill="#5b7a99" text-anchor="middle" opacity="0.7">Browser-Based IFR Flight Simulator • Mission M1: ROS → SNT → AEP ILS 13</text>
 </svg>
