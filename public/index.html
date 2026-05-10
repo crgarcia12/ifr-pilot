@@ -60,6 +60,8 @@
     font-family:inherit;font-size:11px;padding:4px 6px;border-radius:4px;cursor:pointer
   }
   #ap-panel button.on{background:var(--accent);color:#001b10;border-color:var(--accent);font-weight:700}
+  #ap-panel button.nav-armed{background:var(--warn);color:#1a0f00;border-color:var(--warn);font-weight:700}
+  #ap-panel button.nav-active{background:var(--accent);color:#001b10;border-color:var(--accent);font-weight:700}
   #ap-panel input{
     background:#0a121b;border:1px solid var(--edge);color:var(--ink);font-family:inherit;
     font-size:12px;padding:3px 4px;border-radius:4px;width:100%
@@ -151,6 +153,7 @@
   const RATES = [1, 2, 4, 8, 16, 32];
   const STORAGE_KEY = 'ifrPilot.simRate';
   const MAX_STEP = 1/30;
+  const NAV_INTERCEPT_RANGE = 0.5; // Nautical miles - NAV arms if farther, activates when closer
 
   // VOR station near starting point (Seattle VORTAC, fictionalized)
   const VOR = { id: 'SEA', freq: '117.80', lat: 47.435, lon: -122.309, courseOBS: 90 };
@@ -165,7 +168,8 @@
     simTime: 0,
     lastWall: 0,
     ap: { master: false, hdgOn: false, altOn: false, navOn: false,
-          hdgTarget: 90, altTarget: 3000, obs: 90 }
+          hdgTarget: 90, altTarget: 3000, obs: 90 },
+    navMode: null // null = off, 'armed' = engaged but not steering, 'active' = steering
   };
 
   function loadRate(){
@@ -233,12 +237,45 @@
     apEls.toggle.classList.toggle('on', state.ap.master);
     apEls.hdg.classList.toggle('on', state.ap.hdgOn);
     apEls.alt.classList.toggle('on', state.ap.altOn);
-    apEls.nav.classList.toggle('on', state.ap.navOn);
+    
+    // NAV button styling based on navMode
+    apEls.nav.classList.remove('on', 'nav-armed', 'nav-active');
+    if (state.navMode === 'armed') {
+      apEls.nav.classList.add('nav-armed');
+      apEls.navStatus.textContent = 'ARMED';
+      apEls.navStatus.style.color = 'var(--warn)';
+    } else if (state.navMode === 'active') {
+      apEls.nav.classList.add('nav-active');
+      apEls.navStatus.textContent = 'ACTIVE';
+      apEls.navStatus.style.color = 'var(--accent)';
+    } else {
+      apEls.navStatus.textContent = 'OFF';
+      apEls.navStatus.style.color = 'var(--dim)';
+    }
+    
+    // Legacy navOn for backward compatibility
+    state.ap.navOn = (state.navMode === 'armed' || state.navMode === 'active');
   }
   apEls.toggle.addEventListener('click', () => { state.ap.master = !state.ap.master; syncAp(); });
-  apEls.hdg.addEventListener('click', () => { state.ap.hdgOn = !state.ap.hdgOn; if (state.ap.hdgOn) state.ap.navOn = false; syncAp(); });
+  apEls.hdg.addEventListener('click', () => { state.ap.hdgOn = !state.ap.hdgOn; if (state.ap.hdgOn) { state.navMode = null; } syncAp(); });
   apEls.alt.addEventListener('click', () => { state.ap.altOn = !state.ap.altOn; syncAp(); });
-  apEls.nav.addEventListener('click', () => { state.ap.navOn = !state.ap.navOn; if (state.ap.navOn) state.ap.hdgOn = false; syncAp(); });
+  apEls.nav.addEventListener('click', () => { 
+    if (state.navMode) {
+      // Disengage if already engaged (armed or active)
+      state.navMode = null;
+      state.ap.hdgOn = false;
+    } else {
+      // Engage: check distance to decide armed vs active
+      const distToCourse = distanceToCourseLine();
+      if (distToCourse > NAV_INTERCEPT_RANGE) {
+        state.navMode = 'armed'; // Too far - arm but don't steer yet
+      } else {
+        state.navMode = 'active'; // Close enough - activate immediately
+      }
+      state.ap.hdgOn = false; // Disengage HDG mode
+    }
+    syncAp(); 
+  });
   apEls.hdgVal.addEventListener('change', () => { state.ap.hdgTarget = ((parseFloat(apEls.hdgVal.value)||0)%360+360)%360; });
   apEls.altVal.addEventListener('change', () => { state.ap.altTarget = Math.max(0, parseFloat(apEls.altVal.value)||0); });
   syncAp();
@@ -261,9 +298,19 @@
 
     // Autopilot (mild authority, will not fight strong stick input)
     if (state.ap.master){
+      // Check for armed→active transition
+      if (state.navMode === 'armed') {
+        const distToCourse = distanceToCourseLine();
+        if (distToCourse <= NAV_INTERCEPT_RANGE) {
+          state.navMode = 'active';
+          syncAp();
+        }
+      }
+      
       // Heading hold or NAV
       let hdgTarget = state.ap.hdgTarget;
-      if (state.ap.navOn){
+      if (state.navMode === 'active'){
+        // Only steer when ACTIVE, not when ARMED
         // Steer toward VOR radial (course OBS) intercept
         const brg = bearingTo(state.lat, state.lon, VOR.lat, VOR.lon);
         const cdi = vorCdi(); // -1..+1 (deflection)
@@ -272,12 +319,22 @@
         hdgTarget = (VOR.courseOBS + intercept + 360) % 360;
         // If we're past the station, just track outbound on the course
         const dist = haversineNm(state.lat, state.lon, VOR.lat, VOR.lon);
+        const distToCourse = distanceToCourseLine();
         if (dist < 0.5) hdgTarget = VOR.courseOBS;
-        apEls.navStatus.textContent = 'CDI ' + cdi.toFixed(2) + '  ' + dist.toFixed(1) + ' NM';
+        apEls.navStatus.textContent = 'ACTIVE  XTK ' + distToCourse.toFixed(2) + ' NM';
+        apEls.navStatus.style.color = 'var(--accent)';
+      } else if (state.navMode === 'armed') {
+        // Show armed status with distance
+        const distToCourse = distanceToCourseLine();
+        apEls.navStatus.textContent = 'ARMED  ' + distToCourse.toFixed(2) + ' NM';
+        apEls.navStatus.style.color = 'var(--warn)';
       } else {
-        apEls.navStatus.textContent = '—';
+        apEls.navStatus.textContent = 'OFF';
+        apEls.navStatus.style.color = 'var(--dim)';
       }
-      if (state.ap.hdgOn || state.ap.navOn){
+      
+      if (state.ap.hdgOn || state.navMode === 'active'){
+        // Only apply heading corrections for HDG mode or ACTIVE NAV (not ARMED)
         const err = angleDiff(hdgTarget, state.hdg);
         const targetRoll = clamp(err * 1.0, -25, 25);
         state.roll += (targetRoll - state.roll) * Math.min(1, 1.5*dt);
@@ -338,6 +395,15 @@
     const brgFromVor = bearingTo(VOR.lat, VOR.lon, state.lat, state.lon);
     const dev = angleDiff(brgFromVor, VOR.courseOBS); // degrees
     return clamp(dev / 10, -1, 1); // full scale at 10°
+  }
+  function distanceToCourseLine(){
+    // Perpendicular distance from aircraft to VOR course line (NM)
+    // Use cross-track distance formula
+    const distToVor = haversineNm(state.lat, state.lon, VOR.lat, VOR.lon);
+    const brgToVor = bearingTo(state.lat, state.lon, VOR.lat, VOR.lon);
+    const courseDiff = angleDiff(brgToVor, VOR.courseOBS);
+    // Cross-track distance = distance * sin(angle off course)
+    return Math.abs(distToVor * Math.sin(courseDiff * Math.PI / 180));
   }
 
   // ===== Renderers =========================================================

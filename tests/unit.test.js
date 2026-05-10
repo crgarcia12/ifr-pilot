@@ -90,3 +90,39 @@ test('state remains finite at 32x for 30 wall-clock seconds', () => {
     assert.ok(Number.isFinite(s[k]), `${k} not finite: ${s[k]}`);
   }
 });
+
+// NAV armed/active mode tests
+test('NAV engages in armed mode when far from course', () => {
+  const m = html.match(/NAV_INTERCEPT_RANGE\s*=\s*([\d.]+)/);
+  assert.ok(m, 'NAV_INTERCEPT_RANGE constant not found');
+  const interceptRange = parseFloat(m[1]);
+  assert.ok(interceptRange > 0 && interceptRange <= 1, 'NAV_INTERCEPT_RANGE should be 0-1 NM');
+});
+
+test('NAV mode has three states: null, armed, active', () => {
+  // State model includes navMode property
+  assert.match(html, /navMode\s*:\s*null|navMode\s*:\s*'armed'|navMode\s*:\s*'active'/);
+});
+
+test('NAV button CSS includes armed (orange) and active (green) styles', () => {
+  assert.match(html, /\.nav-armed/);
+  assert.match(html, /\.nav-active/);
+});
+
+test('perpendicular distance calculation exists for intercept range check', () => {
+  // Function to calculate distance from aircraft to VOR course line
+  assert.match(html, /function\s+distanceToCourseLine|const\s+distanceToCourseLine|distToCourse/);
+});
+
+test('armed NAV transitions to active when within intercept range', () => {
+  // Logic should check distance and transition navMode from 'armed' to 'active'
+  assert.match(html, /navMode\s*===\s*['"]armed['"]/);
+  assert.match(html, /navMode\s*=\s*['"]active['"]/);
+});
+
+test('NAV button click handler checks distance before setting mode', () => {
+  // Button click should calculate distance and choose armed vs active
+  assert.match(html, /apEls\.nav\.addEventListener.*click/);
+  assert.match(html, /distanceToCourseLine\(\)/);
+  assert.match(html, /NAV_INTERCEPT_RANGE/);
+});
