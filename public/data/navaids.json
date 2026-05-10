@@ -1,0 +1,31 @@
+{
+  "navaids": [
+    {
+      "id": "ROS",
+      "type": "VORDME",
+      "name": "Rosario VOR/DME",
+      "lat": -32.9036,
+      "lon": -60.7853,
+      "freq": 112.30
+    },
+    {
+      "id": "SNT",
+      "type": "VORDME",
+      "name": "San Fernando VOR/DME",
+      "lat": -34.4533,
+      "lon": -58.5897,
+      "freq": 113.40
+    },
+    {
+      "id": "AEP-ILS13",
+      "type": "ILS",
+      "name": "Aeroparque RWY 13 ILS",
+      "lat": -34.5538,
+      "lon": -58.4180,
+      "freq": 110.30,
+      "runway_heading": 131,
+      "glideslope_deg": 3.0,
+      "threshold": { "lat": -34.5538, "lon": -58.4180 }
+    }
+  ]
+}

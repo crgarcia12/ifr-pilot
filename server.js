@@ -25,6 +25,18 @@ const server = http.createServer((req, res) => {
   try {
     const url = new URL(req.url, 'http://localhost');
     let pathname = decodeURIComponent(url.pathname);
+
+    // API endpoints — serve the JSON data files directly so that the same
+    // payload powers both the UI and any downstream test harness.
+    if (pathname === '/api/navaids' || pathname === '/api/missions') {
+      const file = path.join(PUBLIC_DIR, 'data', pathname.replace('/api/', '') + '.json');
+      fs.readFile(file, (err, data) => {
+        if (err) return send(res, 500, JSON.stringify({ error: 'data unavailable' }), { 'Content-Type': MIME['.json'] });
+        send(res, 200, data, { 'Content-Type': MIME['.json'] });
+      });
+      return;
+    }
+
     if (pathname === '/' || pathname === '') pathname = '/index.html';
 
     // Security: prevent traversal
