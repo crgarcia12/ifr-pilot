@@ -63,3 +63,4 @@ The NAV autopilot now:
 - Anticipates convergence and reduces corrections appropriately
 - Maintains stable heading once established on course
 - Behaves realistically per IFR flight procedures
+
