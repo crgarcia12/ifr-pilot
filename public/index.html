@@ -487,13 +487,45 @@
       let hdgTarget = state.ap.hdgTarget;
       let lateralActive = state.ap.hdgOn || state.ap.navOn || state.ap.aprOn;
       if (state.ap.navOn || state.ap.aprOn){
-        const cdi = vorCdi();
-        const interceptLimit = state.ap.aprOn ? 20 : 30;
-        const cdiGain = state.ap.aprOn ? 45 : 30;
-        const intercept = clamp(cdi * cdiGain, -interceptLimit, interceptLimit);
-        hdgTarget = (VOR.courseOBS + intercept + 360) % 360;
+        // PD controller for smooth VOR radial intercept
+        const brgFromVor = bearingTo(VOR.lat, VOR.lon, state.lat, state.lon);
+        const dev = angleDiff(brgFromVor, VOR.courseOBS); // degrees off course
+        const cdi = clamp(dev / 10, -1, 1); // normalized -1..+1
         const dist = haversineNm(state.lat, state.lon, VOR.lat, VOR.lon);
-        if (dist < 0.5) hdgTarget = VOR.courseOBS;
+        
+        // Calculate cross-track distance in NM (perpendicular distance to course line)
+        const crossTrackNm = dist * Math.sin(Math.abs(dev) * Math.PI / 180);
+        const crossTrackSign = Math.sign(dev); // which side of course line
+        
+        // Calculate heading difference from course (for damping)
+        const headingToCourse = angleDiff(state.hdg, VOR.courseOBS);
+        
+        let intercept = 0;
+        if (dist > 0.5) {
+          // PD controller gains - APR mode uses tighter control
+          const K_p = state.ap.aprOn ? 20 : 15; // Proportional: degrees per NM off course
+          const K_d = state.ap.aprOn ? 3 : 2;   // Derivative: damping factor
+          const maxIntercept = state.ap.aprOn ? 20 : 45; // APR mode uses smaller intercept angles
+          
+          // Proportional term: based on cross-track error
+          const proportional = crossTrackNm * K_p * crossTrackSign;
+          
+          // Derivative term: damping based on heading convergence
+          const derivative = headingToCourse * K_d;
+          
+          // Combined control signal
+          intercept = clamp(proportional - derivative, -maxIntercept, maxIntercept);
+          
+          // Apply deadband near centerline to prevent hunting
+          if (Math.abs(crossTrackNm) < 0.05) {
+            intercept *= 0.5; // Reduce gain by 50% when very close
+          }
+        }
+        
+        hdgTarget = (VOR.courseOBS + intercept + 360) % 360;
+        apEls.navStatus.textContent = 'CDI ' + cdi.toFixed(2) + '  ' + dist.toFixed(1) + ' NM';
+      } else {
+        apEls.navStatus.textContent = '—';
       }
       if (lateralActive){
         const err = angleDiff(hdgTarget, state.hdg);
