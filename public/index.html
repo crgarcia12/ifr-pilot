@@ -311,16 +311,33 @@
       let hdgTarget = state.ap.hdgTarget;
       if (state.navMode === 'active'){
         // Only steer when ACTIVE, not when ARMED
-        // Steer toward VOR radial (course OBS) intercept
+        // Steer toward VOR radial (course OBS) intercept with turn anticipation
         const brg = bearingTo(state.lat, state.lon, VOR.lat, VOR.lon);
         const cdi = vorCdi(); // -1..+1 (deflection)
-        // Target a 30° intercept reduced as CDI centers
-        const intercept = clamp(cdi * 30, -45, 45);
+        const distToCourse = distanceToCourseLine();
+        
+        // Calculate turn anticipation distance (in NM)
+        // At standard rate turn (3°/sec) with typical bank angle
+        const turnRadius = (state.ias / 60) / (3 * Math.PI / 180); // Approx turn radius in NM
+        const anticipationDist = turnRadius * 0.7; // Start turning 70% of turn radius early
+        
+        // Reduce intercept angle as we approach the course line
+        let intercept = 0;
+        if (distToCourse > anticipationDist) {
+          // Far from course - use aggressive 45° intercept
+          intercept = clamp(cdi * 45, -45, 45);
+        } else {
+          // Close to course - reduce intercept proportionally
+          const factor = distToCourse / anticipationDist;
+          intercept = clamp(cdi * 45 * factor, -15, 15);
+        }
+        
         hdgTarget = (VOR.courseOBS + intercept + 360) % 360;
+        
         // If we're past the station, just track outbound on the course
         const dist = haversineNm(state.lat, state.lon, VOR.lat, VOR.lon);
-        const distToCourse = distanceToCourseLine();
         if (dist < 0.5) hdgTarget = VOR.courseOBS;
+        
         apEls.navStatus.textContent = 'ACTIVE  XTK ' + distToCourse.toFixed(2) + ' NM';
         apEls.navStatus.style.color = 'var(--accent)';
       } else if (state.navMode === 'armed') {
@@ -336,8 +353,10 @@
       if (state.ap.hdgOn || state.navMode === 'active'){
         // Only apply heading corrections for HDG mode or ACTIVE NAV (not ARMED)
         const err = angleDiff(hdgTarget, state.hdg);
-        const targetRoll = clamp(err * 1.0, -25, 25);
-        state.roll += (targetRoll - state.roll) * Math.min(1, 1.5*dt);
+        // Increased gain from 1.0 to 2.0 for more aggressive correction
+        // Add proportional-derivative control to reduce overshoot
+        const targetRoll = clamp(err * 2.0, -25, 25);
+        state.roll += (targetRoll - state.roll) * Math.min(1, 2.0*dt);
       }
       if (state.ap.altOn){
         const errFt = state.ap.altTarget - state.alt;
