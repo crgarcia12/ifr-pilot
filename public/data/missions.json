@@ -1,0 +1,30 @@
+{
+  "missions": [
+    {
+      "id": "M1",
+      "title": "ROS → SNT → AEP ILS 13",
+      "description": "Depart north of Rosario, track ROS VOR, proceed direct SNT, then intercept and fly the ILS RWY 13 approach into Aeroparque (SABE).",
+      "start": {
+        "lat": -32.0000,
+        "lon": -60.5000,
+        "heading": 180,
+        "altitude_ft": 5000,
+        "speed_kt": 150
+      },
+      "waypoints": [
+        {
+          "navaid": "ROS",
+          "arrival_criteria": { "radius_nm": 1.5 }
+        },
+        {
+          "navaid": "SNT",
+          "arrival_criteria": { "radius_nm": 1.5 }
+        },
+        {
+          "navaid": "AEP-ILS13",
+          "arrival_criteria": { "radius_nm": 1.5, "land": true }
+        }
+      ]
+    }
+  ]
+}

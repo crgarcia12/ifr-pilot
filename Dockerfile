@@ -1,4 +1,4 @@
-FROM node:20-alpine
+FROM mcr.microsoft.com/azurelinux/base/nodejs:20
 WORKDIR /app
 COPY package.json ./
 COPY server.js ./
