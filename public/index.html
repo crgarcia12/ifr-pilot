@@ -255,7 +255,7 @@
       <kbd>←</kbd><kbd>→</kbd> roll · <kbd>↑</kbd><kbd>↓</kbd> pitch ·
       <kbd>A</kbd>/<kbd>Z</kbd> throttle · <kbd>[</kbd>/<kbd>]</kbd> sim-rate · <kbd>P</kbd> pause
     </div>
-    <div class="version">FE 0.0.6</div>
+    <div class="version">FE 0.0.7</div>
   </footer>
 </div>
 
@@ -794,7 +794,9 @@
     // Heading bug (HDG target) - drawn in rotated coordinate system
     if (state.ap.hdgTarget !== null && state.ap.hdgTarget !== undefined) {
       ctx.save();
-      ctx.rotate(state.ap.hdgTarget * Math.PI / 180);
+      // Rotate by the difference: target minus current (relative angle)
+      const relativeHdg = (state.ap.hdgTarget - state.hdg + 360) % 360;
+      ctx.rotate(relativeHdg * Math.PI / 180);
       ctx.fillStyle = '#00ffff'; // Cyan heading bug
       ctx.strokeStyle = '#00ffff';
       ctx.lineWidth = 2;
