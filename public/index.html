@@ -255,7 +255,7 @@
       <kbd>←</kbd><kbd>→</kbd> roll · <kbd>↑</kbd><kbd>↓</kbd> pitch ·
       <kbd>A</kbd>/<kbd>Z</kbd> throttle · <kbd>[</kbd>/<kbd>]</kbd> sim-rate · <kbd>P</kbd> pause
     </div>
-    <div class="version">FE 0.0.3</div>
+    <div class="version">FE 0.0.4</div>
   </footer>
 </div>
 
@@ -402,12 +402,13 @@
       const distToCourse = distanceToCourseLine();
       const NAV_INTERCEPT_RANGE = 0.5; // NM
       if (distToCourse > NAV_INTERCEPT_RANGE) {
-        state.navMode = 'armed'; // Far from course - arm but don't track yet
+        state.navMode = 'armed'; // Far from course - arm but don't track yet (HDG continues)
       } else {
         state.navMode = 'active'; // Close to course - track immediately
+        state.ap.hdgOn = false; // Disengage HDG when NAV goes active
       }
       state.ap.navOn = true;
-      state.ap.hdgOn = false;
+      // Note: HDG stays on if NAV is armed, turns off when NAV goes active
       state.ap.aprOn = false;
     }
     syncAp();
@@ -531,6 +532,7 @@
         const NAV_INTERCEPT_RANGE = 0.5;
         if (distToCourse <= NAV_INTERCEPT_RANGE) {
           state.navMode = 'active'; // Within range - activate tracking
+          state.ap.hdgOn = false; // Automatically disengage HDG when NAV captures
         }
       }
       
