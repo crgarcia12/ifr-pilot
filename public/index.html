@@ -255,7 +255,7 @@
       <kbd>←</kbd><kbd>→</kbd> roll · <kbd>↑</kbd><kbd>↓</kbd> pitch ·
       <kbd>A</kbd>/<kbd>Z</kbd> throttle · <kbd>[</kbd>/<kbd>]</kbd> sim-rate · <kbd>P</kbd> pause
     </div>
-    <div class="version">FE 0.0.5</div>
+    <div class="version">FE 0.0.6</div>
   </footer>
 </div>
 
@@ -791,10 +791,26 @@
     for (const d of [-2,-1,1,2]){
       ctx.beginPath(); ctx.arc(d*R*0.12, 0, 3, 0, Math.PI*2); ctx.fill();
     }
+    // Heading bug (HDG target) - drawn in rotated coordinate system
+    if (state.ap.hdgTarget !== null && state.ap.hdgTarget !== undefined) {
+      ctx.save();
+      ctx.rotate(state.ap.hdgTarget * Math.PI / 180);
+      ctx.fillStyle = '#00ffff'; // Cyan heading bug
+      ctx.strokeStyle = '#00ffff';
+      ctx.lineWidth = 2;
+      // Small trapezoid/triangle on outer edge
+      ctx.beginPath();
+      ctx.moveTo(0, -R+2);
+      ctx.lineTo(-6, -R+10);
+      ctx.lineTo(6, -R+10);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
     ctx.restore();
     ctx.restore();
 
-    // Heading index at top
+    // Heading index at top (aircraft current heading)
     ctx.fillStyle = '#ffeb3b';
     ctx.beginPath(); ctx.moveTo(cx, cy-R-2); ctx.lineTo(cx-7, cy-R+8); ctx.lineTo(cx+7, cy-R+8); ctx.closePath(); ctx.fill();
 
