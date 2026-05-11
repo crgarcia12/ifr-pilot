@@ -39,6 +39,10 @@
   footer{
     grid-column:1 / -1;display:flex;justify-content:center;align-items:center;gap:12px;
     background:var(--panel);border:1px solid var(--edge);border-radius:8px;padding:8px;
+    position:relative;
+  }
+  .version{
+    position:absolute;right:12px;font-size:10px;color:var(--dim);opacity:0.6;
   }
   .vel{display:flex;gap:6px}
   .vel button{
@@ -247,6 +251,7 @@
       <kbd>←</kbd><kbd>→</kbd> roll · <kbd>↑</kbd><kbd>↓</kbd> pitch ·
       <kbd>A</kbd>/<kbd>Z</kbd> throttle · <kbd>[</kbd>/<kbd>]</kbd> sim-rate · <kbd>P</kbd> pause
     </div>
+    <div class="version">FE 0.0.2</div>
   </footer>
 </div>
 
