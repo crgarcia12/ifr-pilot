@@ -596,7 +596,8 @@
     // autopilot intercept turn toward the course rather than away from it.
     const brgFromVor = bearingTo(VOR.lat, VOR.lon, state.lat, state.lon);
     const dev = angleDiff(brgFromVor, VOR.courseOBS); // degrees
-    return clamp(-dev / 10, -1, 1); // full scale at 10°
+    // Increased sensitivity: full scale at 15° (was 10°) for earlier warning
+    return clamp(-dev / 15, -1, 1);
   }
   
   function distanceToCourseLine(){

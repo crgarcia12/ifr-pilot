@@ -105,7 +105,7 @@ test('VOR CDI deflects toward course (fly-toward-the-bar convention)', () => {
   function vorCdi(VOR, st){
     const brg = bearingTo(VOR.lat, VOR.lon, st.lat, st.lon);
     const dev = angleDiff(brg, VOR.courseOBS);
-    return clamp(-dev / 10, -1, 1);
+    return clamp(-dev / 15, -1, 1); // Updated to match new sensitivity
   }
   const VOR = { lat: 0, lon: 0, courseOBS: 0 }; // OBS = north radial
   // Aircraft NE of station (radial 045): right of selected north radial.
@@ -119,8 +119,8 @@ test('VOR CDI deflects toward course (fly-toward-the-bar convention)', () => {
   // On course (due north): zero deflection.
   const onCourse = vorCdi(VOR, { lat: 1, lon: 0 });
   assert.ok(Math.abs(onCourse) < 0.01, `expected ~0 on course, got ${onCourse}`);
-  // Confirm the source uses the negated-dev formula.
-  assert.match(html, /clamp\(\s*-\s*dev\s*\/\s*10/);
+  // Confirm the source uses the negated-dev formula with 15° full-scale.
+  assert.match(html, /clamp\(\s*-\s*dev\s*\/\s*15/);
 });
 
 
