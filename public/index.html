@@ -255,7 +255,7 @@
       <kbd>←</kbd><kbd>→</kbd> roll · <kbd>↑</kbd><kbd>↓</kbd> pitch ·
       <kbd>A</kbd>/<kbd>Z</kbd> throttle · <kbd>[</kbd>/<kbd>]</kbd> sim-rate · <kbd>P</kbd> pause
     </div>
-    <div class="version">FE 0.0.7</div>
+    <div class="version">FE 0.0.8</div>
   </footer>
 </div>
 
@@ -549,21 +549,30 @@
         if (distToCourse < 0.05) {
           hdgTarget = VOR.courseOBS;
         } else {
-          // Reduce intercept angle as we approach the course line with turn anticipation
-          let intercept = 0;
-          const baseGain = state.ap.aprOn ? 35 : 30; // Reduced from 45 to prevent oscillation
-          const interceptLimit = state.ap.aprOn ? 20 : 30; // Reduced from 45
+          // Use LATERAL DISTANCE for intercept, not just angular CDI
+          // This ensures we intercept even when flying parallel to the course
+          const distToVor = haversineNm(state.lat, state.lon, VOR.lat, VOR.lon);
+          const brgToVor = bearingTo(state.lat, state.lon, VOR.lat, VOR.lon);
+          const courseDiff = angleDiff(brgToVor, VOR.courseOBS);
+          
+          // Sign: positive if course is to our right, negative if to our left
+          const lateralSign = Math.sign(Math.sin(courseDiff * Math.PI / 180));
+          
+          // Intercept angle based on lateral distance (more distance = bigger angle)
+          let interceptAngle = 0;
+          const baseGain = state.ap.aprOn ? 7 : 5; // degrees per NM lateral
+          const maxIntercept = state.ap.aprOn ? 25 : 35;
           
           if (distToCourse > anticipationDist) {
             // Far from course - use aggressive intercept
-            intercept = clamp(cdi * baseGain, -interceptLimit, interceptLimit);
+            interceptAngle = clamp(distToCourse * baseGain * lateralSign, -maxIntercept, maxIntercept);
           } else {
             // Close to course - reduce intercept smoothly
             const factor = distToCourse / anticipationDist;
-            intercept = clamp(cdi * baseGain * factor, -10, 10);
+            interceptAngle = clamp(distToCourse * baseGain * lateralSign * factor, -15, 15);
           }
           
-          hdgTarget = (VOR.courseOBS + intercept + 360) % 360;
+          hdgTarget = (VOR.courseOBS + interceptAngle + 360) % 360;
         }
         
         // Override: if very close to station, just fly outbound
