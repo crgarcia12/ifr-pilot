@@ -495,29 +495,36 @@
         const turnRadius = (state.ias / 60) / (3 * Math.PI / 180);
         const anticipationDist = turnRadius * 0.7;
         
-        // Reduce intercept angle as we approach the course line with turn anticipation
-        let intercept = 0;
-        const baseGain = state.ap.aprOn ? 45 : 45; // Increased from 30 to 45 for NAV
-        const interceptLimit = state.ap.aprOn ? 20 : 45; // Increased from 30 to 45 for NAV
-        
-        if (distToCourse > anticipationDist) {
-          // Far from course - use aggressive intercept
-          intercept = clamp(cdi * baseGain, -interceptLimit, interceptLimit);
+        // Deadband: if very close to course (< 0.05 NM), fly the course directly
+        if (distToCourse < 0.05) {
+          hdgTarget = VOR.courseOBS;
         } else {
-          // Close to course - reduce intercept proportionally for smooth capture
-          const factor = distToCourse / anticipationDist;
-          intercept = clamp(cdi * baseGain * factor, -15, 15);
+          // Reduce intercept angle as we approach the course line with turn anticipation
+          let intercept = 0;
+          const baseGain = state.ap.aprOn ? 35 : 30; // Reduced from 45 to prevent oscillation
+          const interceptLimit = state.ap.aprOn ? 20 : 30; // Reduced from 45
+          
+          if (distToCourse > anticipationDist) {
+            // Far from course - use aggressive intercept
+            intercept = clamp(cdi * baseGain, -interceptLimit, interceptLimit);
+          } else {
+            // Close to course - reduce intercept smoothly
+            const factor = distToCourse / anticipationDist;
+            intercept = clamp(cdi * baseGain * factor, -10, 10);
+          }
+          
+          hdgTarget = (VOR.courseOBS + intercept + 360) % 360;
         }
         
-        hdgTarget = (VOR.courseOBS + intercept + 360) % 360;
+        // Override: if very close to station, just fly outbound
         const dist = haversineNm(state.lat, state.lon, VOR.lat, VOR.lon);
         if (dist < 0.5) hdgTarget = VOR.courseOBS;
       }
       if (lateralActive){
         const err = angleDiff(hdgTarget, state.hdg);
-        // Increased gain from 1.0 to 2.0 for more aggressive correction
-        const targetRoll = clamp(err * 2.0, -25, 25);
-        state.roll += (targetRoll - state.roll) * Math.min(1, 2.0*dt); // Increased from 1.5 to 2.0
+        // Reduced gain from 2.0 to 1.5 to prevent oscillation
+        const targetRoll = clamp(err * 1.5, -25, 25);
+        state.roll += (targetRoll - state.roll) * Math.min(1, 1.5*dt);
       }
       // Vertical: ALT hold or VS hold (APR also nudges down on glide)
       if (state.ap.altOn){
