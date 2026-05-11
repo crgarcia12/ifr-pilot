@@ -255,7 +255,7 @@
       <kbd>←</kbd><kbd>→</kbd> roll · <kbd>↑</kbd><kbd>↓</kbd> pitch ·
       <kbd>A</kbd>/<kbd>Z</kbd> throttle · <kbd>[</kbd>/<kbd>]</kbd> sim-rate · <kbd>P</kbd> pause
     </div>
-    <div class="version">FE 0.0.4</div>
+    <div class="version">FE 0.0.5</div>
   </footer>
 </div>
 
@@ -653,9 +653,11 @@
     // autopilot intercept turn toward the course rather than away from it.
     const brgFromVor = bearingTo(VOR.lat, VOR.lon, state.lat, state.lon);
     const dev = angleDiff(brgFromVor, VOR.courseOBS); // degrees
-    // Aviation standards: VOR = 10° full-scale, ILS = 2.5° full-scale
+    // Aviation standards: VOR = 10° full-scale (dots), ILS = 2.5° full-scale
+    // But allow needle to show up to 20° (VOR) or 5° (ILS) for situational awareness
     const fullScale = state.ap.aprOn ? 2.5 : 10;
-    return clamp(-dev / fullScale, -1, 1);
+    const maxDeflection = state.ap.aprOn ? 5 : 20; // Extended range for better SA
+    return clamp(-dev / maxDeflection, -1, 1);
   }
   
   function distanceToCourseLine(){
@@ -778,6 +780,7 @@
     ctx.fillStyle='#ffeb3b'; ctx.fill();
     // CDI deflection bar — uses the smoothed display value so the needle
     // moves progressively across the dial instead of snapping side-to-side.
+    // Visual scale: ±0.5R = ±20° (VOR) or ±5° (ILS), dots at ±10° (VOR) or ±2.5° (ILS)
     const cdi = state.cdiDisplay;
     const deflectPx = cdi * R*0.5;
     ctx.strokeStyle = cdi>0?'#00ff9d':'#00ff9d';
