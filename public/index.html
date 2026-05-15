@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
+<!-- Merged from main: missions, map, radio panel, multiple navaids -->
 <title>IFR Pilot</title>
 <style>
   :root{
@@ -38,6 +39,10 @@
   footer{
     grid-column:1 / -1;display:flex;justify-content:center;align-items:center;gap:12px;
     background:var(--panel);border:1px solid var(--edge);border-radius:8px;padding:8px;
+    position:relative;
+  }
+  .version{
+    position:absolute;right:12px;font-size:10px;color:var(--dim);opacity:0.6;
   }
   .vel{display:flex;gap:6px}
   .vel button{
@@ -67,6 +72,10 @@
     box-shadow:0 0 6px rgba(0,255,157,.65), inset 0 1px 0 rgba(255,255,255,.3);
   }
   .av-btn.warn.on{
+    background:linear-gradient(#ffd073,#ff9b1c);color:#2b1500;border-color:#ffb547;
+    box-shadow:0 0 6px rgba(255,181,71,.65);
+  }
+  .av-btn.nav-armed{
     background:linear-gradient(#ffd073,#ff9b1c);color:#2b1500;border-color:#ffb547;
     box-shadow:0 0 6px rgba(255,181,71,.65);
   }
@@ -246,6 +255,7 @@
       <kbd>←</kbd><kbd>→</kbd> roll · <kbd>↑</kbd><kbd>↓</kbd> pitch ·
       <kbd>A</kbd>/<kbd>Z</kbd> throttle · <kbd>[</kbd>/<kbd>]</kbd> sim-rate · <kbd>P</kbd> pause
     </div>
+    <div class="version">FE 0.0.9</div>
   </footer>
 </div>
 
@@ -274,6 +284,7 @@
     lastWall: 0,
     ap: { master: false, hdgOn: false, altOn: false, navOn: false, aprOn: false, vsOn: false,
           hdgTarget: 90, altTarget: 3000, vsTarget: 0, obs: 90 },
+    navMode: null, // null = off, 'armed' = engaged but intercepting, 'active' = tracking
     // Visual smoothing for the VOR/HSI CDI bar so the needle doesn't snap from
     // peg-to-peg. Lerps toward the raw vorCdi() value with a ~1.8s time
     // constant — the AP loop still uses the raw value for responsiveness.
@@ -357,7 +368,15 @@
     apEls.master.style.color = state.ap.master ? 'var(--accent)' : 'var(--dim)';
     apEls.toggle.classList.toggle('on', state.ap.master);
     apEls.hdg.classList.toggle('on', state.ap.hdgOn);
-    apEls.nav.classList.toggle('on', state.ap.navOn);
+    
+    // NAV button: show armed (orange) or active (green) states
+    apEls.nav.classList.remove('on', 'nav-armed');
+    if (state.navMode === 'armed') {
+      apEls.nav.classList.add('nav-armed');
+    } else if (state.navMode === 'active') {
+      apEls.nav.classList.add('on');
+    }
+    
     apEls.apr.classList.toggle('on', state.ap.aprOn);
     apEls.alt.classList.toggle('on', state.ap.altOn);
     apEls.vs.classList.toggle('on', state.ap.vsOn);
@@ -372,9 +391,29 @@
   function bumpAlt(d){ state.ap.altTarget = Math.max(0, Math.min(40000, state.ap.altTarget + d)); syncAp(); }
   function bumpVs(d){ state.ap.vsTarget = Math.max(-3000, Math.min(3000, state.ap.vsTarget + d)); syncAp(); }
   apEls.toggle.addEventListener('click', () => { state.ap.master = !state.ap.master; syncAp(); });
-  apEls.hdg.addEventListener('click', () => { state.ap.hdgOn = !state.ap.hdgOn; if (state.ap.hdgOn){ state.ap.navOn = false; state.ap.aprOn = false; } syncAp(); });
-  apEls.nav.addEventListener('click', () => { state.ap.navOn = !state.ap.navOn; if (state.ap.navOn){ state.ap.hdgOn = false; state.ap.aprOn = false; } syncAp(); });
-  apEls.apr.addEventListener('click', () => { state.ap.aprOn = !state.ap.aprOn; if (state.ap.aprOn){ state.ap.navOn = false; state.ap.hdgOn = false; } syncAp(); });
+  apEls.hdg.addEventListener('click', () => { state.ap.hdgOn = !state.ap.hdgOn; if (state.ap.hdgOn){ state.ap.navOn = false; state.ap.aprOn = false; state.navMode = null; } syncAp(); });
+  apEls.nav.addEventListener('click', () => {
+    if (state.navMode) {
+      // Turn off NAV
+      state.navMode = null;
+      state.ap.navOn = false;
+    } else {
+      // Turn on NAV - check if we should arm or go active immediately
+      const distToCourse = distanceToCourseLine();
+      const NAV_INTERCEPT_RANGE = 0.5; // NM
+      if (distToCourse > NAV_INTERCEPT_RANGE) {
+        state.navMode = 'armed'; // Far from course - arm but don't track yet (HDG continues)
+      } else {
+        state.navMode = 'active'; // Close to course - track immediately
+        state.ap.hdgOn = false; // Disengage HDG when NAV goes active
+      }
+      state.ap.navOn = true;
+      // Note: HDG stays on if NAV is armed, turns off when NAV goes active
+      state.ap.aprOn = false;
+    }
+    syncAp();
+  });
+  apEls.apr.addEventListener('click', () => { state.ap.aprOn = !state.ap.aprOn; if (state.ap.aprOn){ state.ap.navOn = false; state.ap.hdgOn = false; state.navMode = null; } syncAp(); });
   apEls.alt.addEventListener('click', () => { state.ap.altOn = !state.ap.altOn; if (state.ap.altOn) state.ap.vsOn = false; syncAp(); });
   apEls.vs.addEventListener('click', () => { state.ap.vsOn = !state.ap.vsOn; if (state.ap.vsOn) state.ap.altOn = false; syncAp(); });
   document.getElementById('ap-hdg-up').addEventListener('click', () => bumpHdg(+1));
@@ -485,19 +524,65 @@
     if (state.ap.master){
       // Lateral: HDG, NAV, or APR (APR uses tighter intercept)
       let hdgTarget = state.ap.hdgTarget;
-      let lateralActive = state.ap.hdgOn || state.ap.navOn || state.ap.aprOn;
-      if (state.ap.navOn || state.ap.aprOn){
+      let lateralActive = state.ap.hdgOn || state.ap.aprOn || (state.navMode === 'active');
+      
+      // NAV mode armed→active transition
+      if (state.navMode === 'armed') {
+        const distToCourse = distanceToCourseLine();
+        const NAV_INTERCEPT_RANGE = 0.5;
+        if (distToCourse <= NAV_INTERCEPT_RANGE) {
+          state.navMode = 'active'; // Within range - activate tracking
+          state.ap.hdgOn = false; // Automatically disengage HDG when NAV captures
+        }
+      }
+      
+      if ((state.ap.navOn && state.navMode === 'active') || state.ap.aprOn){
+        // Only steer when NAV is ACTIVE (not armed) or APR is on
         const cdi = vorCdi();
-        const interceptLimit = state.ap.aprOn ? 20 : 30;
-        const cdiGain = state.ap.aprOn ? 45 : 30;
-        const intercept = clamp(cdi * cdiGain, -interceptLimit, interceptLimit);
-        hdgTarget = (VOR.courseOBS + intercept + 360) % 360;
+        const distToCourse = distanceToCourseLine();
+        
+        // Calculate turn anticipation distance (in NM)
+        const turnRadius = (state.ias / 60) / (3 * Math.PI / 180);
+        const anticipationDist = turnRadius * 0.7;
+        
+        // Deadband: if very close to course (< 0.05 NM), fly the course directly
+        if (distToCourse < 0.05) {
+          hdgTarget = VOR.courseOBS;
+        } else {
+          // Use LATERAL DISTANCE for intercept, not just angular CDI
+          // This ensures we intercept even when flying parallel to the course
+          const distToVor = haversineNm(state.lat, state.lon, VOR.lat, VOR.lon);
+          const brgToVor = bearingTo(state.lat, state.lon, VOR.lat, VOR.lon);
+          const courseDiff = angleDiff(brgToVor, VOR.courseOBS);
+          
+          // Sign: positive if course is to our right, negative if to our left
+          const lateralSign = Math.sign(Math.sin(courseDiff * Math.PI / 180));
+          
+          // Intercept angle based on lateral distance (more distance = bigger angle)
+          let interceptAngle = 0;
+          const baseGain = state.ap.aprOn ? 7 : 5; // degrees per NM lateral
+          const maxIntercept = state.ap.aprOn ? 25 : 35;
+          
+          if (distToCourse > anticipationDist) {
+            // Far from course - use aggressive intercept
+            interceptAngle = clamp(distToCourse * baseGain * lateralSign, -maxIntercept, maxIntercept);
+          } else {
+            // Close to course - reduce intercept smoothly
+            const factor = distToCourse / anticipationDist;
+            interceptAngle = clamp(distToCourse * baseGain * lateralSign * factor, -15, 15);
+          }
+          
+          hdgTarget = (VOR.courseOBS + interceptAngle + 360) % 360;
+        }
+        
+        // Override: if very close to station, just fly outbound
         const dist = haversineNm(state.lat, state.lon, VOR.lat, VOR.lon);
         if (dist < 0.5) hdgTarget = VOR.courseOBS;
       }
       if (lateralActive){
         const err = angleDiff(hdgTarget, state.hdg);
-        const targetRoll = clamp(err * 1.0, -25, 25);
+        // Reduced gain from 2.0 to 1.5 to prevent oscillation
+        const targetRoll = clamp(err * 1.5, -25, 25);
         state.roll += (targetRoll - state.roll) * Math.min(1, 1.5*dt);
       }
       // Vertical: ALT hold or VS hold (APR also nudges down on glide)
@@ -577,7 +662,19 @@
     // autopilot intercept turn toward the course rather than away from it.
     const brgFromVor = bearingTo(VOR.lat, VOR.lon, state.lat, state.lon);
     const dev = angleDiff(brgFromVor, VOR.courseOBS); // degrees
-    return clamp(-dev / 10, -1, 1); // full scale at 10°
+    // Aviation standards: VOR = 10° full-scale (dots), ILS = 2.5° full-scale
+    // But allow needle to show up to 20° (VOR) or 5° (ILS) for situational awareness
+    const fullScale = state.ap.aprOn ? 2.5 : 10;
+    const maxDeflection = state.ap.aprOn ? 5 : 20; // Extended range for better SA
+    return clamp(-dev / maxDeflection, -1, 1);
+  }
+  
+  function distanceToCourseLine(){
+    // Perpendicular distance from aircraft to VOR course line (NM)
+    const distToVor = haversineNm(state.lat, state.lon, VOR.lat, VOR.lon);
+    const brgToVor = bearingTo(state.lat, state.lon, VOR.lat, VOR.lon);
+    const courseDiff = angleDiff(brgToVor, VOR.courseOBS);
+    return Math.abs(distToVor * Math.sin(courseDiff * Math.PI / 180));
   }
 
   // ===== Renderers =========================================================
@@ -681,6 +778,25 @@
         ctx.fillText(lbl, Math.cos(a)*tr, Math.sin(a)*tr+4);
       }
     }
+    // Heading bug (HDG target) - drawn OUTSIDE course needle context
+    // Shows absolute heading target on the compass card
+    if (state.ap.hdgTarget !== null && state.ap.hdgTarget !== undefined) {
+      ctx.save();
+      // Rotate by the difference: target minus current (relative angle)
+      const relativeHdg = (state.ap.hdgTarget - state.hdg + 360) % 360;
+      ctx.rotate(relativeHdg * Math.PI / 180);
+      ctx.fillStyle = '#00ffff'; // Cyan heading bug
+      ctx.strokeStyle = '#00ffff';
+      ctx.lineWidth = 2;
+      // Small trapezoid/triangle on outer edge
+      ctx.beginPath();
+      ctx.moveTo(0, -R+2);
+      ctx.lineTo(-6, -R+10);
+      ctx.lineTo(6, -R+10);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
     // Course (OBS) needle: line through center, plus deflection bar
     ctx.save();
     ctx.rotate(VOR.courseOBS*Math.PI/180);
@@ -692,6 +808,7 @@
     ctx.fillStyle='#ffeb3b'; ctx.fill();
     // CDI deflection bar — uses the smoothed display value so the needle
     // moves progressively across the dial instead of snapping side-to-side.
+    // Visual scale: ±0.5R = ±20° (VOR) or ±5° (ILS), dots at ±10° (VOR) or ±2.5° (ILS)
     const cdi = state.cdiDisplay;
     const deflectPx = cdi * R*0.5;
     ctx.strokeStyle = cdi>0?'#00ff9d':'#00ff9d';
@@ -705,7 +822,7 @@
     ctx.restore();
     ctx.restore();
 
-    // Heading index at top
+    // Heading index at top (aircraft current heading)
     ctx.fillStyle = '#ffeb3b';
     ctx.beginPath(); ctx.moveTo(cx, cy-R-2); ctx.lineTo(cx-7, cy-R+8); ctx.lineTo(cx+7, cy-R+8); ctx.closePath(); ctx.fill();
 
