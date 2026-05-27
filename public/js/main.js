@@ -77,6 +77,7 @@ styles.textContent = `
   .mission-card .ttl{font-size:12px;color:var(--ink);font-weight:600}
   .mission-card .desc{font-size:10px;color:var(--dim);margin:3px 0 6px}
   .mission-card .route{font-size:10px;color:var(--accent);letter-spacing:.1em;margin-bottom:6px}
+  .mission-card .meta{font-size:10px;color:var(--dim);letter-spacing:.05em;margin-bottom:6px}
   #ifr-nav1{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center}
   #ifr-nav1 .freq{font-size:18px;color:var(--accent);letter-spacing:.05em;font-weight:700}
   #ifr-nav1 .dme{font-size:18px;color:var(--ink);text-align:right;font-weight:700}
@@ -108,6 +109,8 @@ styles.textContent = `
   #ifr-briefing .b-card .b-ttl{font-size:15px;color:var(--ink);font-weight:700;margin:2px 0 6px}
   #ifr-briefing .b-card .b-desc{font-size:12px;color:var(--ink);opacity:.8;margin-bottom:8px;line-height:1.5}
   #ifr-briefing .b-card .b-route{font-size:11px;color:var(--accent);letter-spacing:.15em;margin-bottom:10px;font-weight:700}
+  #ifr-briefing .b-card .b-meta{font-size:10px;color:var(--warn);letter-spacing:.1em;margin-bottom:6px}
+  #ifr-briefing .b-card .b-alt{font-size:10px;color:var(--dim);margin:2px 0}
   #ifr-briefing .b-card button{appearance:none;border:1px solid var(--accent);background:var(--accent);color:#001b10;font-family:inherit;font-size:12px;font-weight:700;padding:8px 16px;border-radius:5px;cursor:pointer;letter-spacing:.15em}
   #ifr-briefing .b-card button:hover{filter:brightness(1.1)}
   #ifr-briefing .close{position:absolute;top:14px;right:18px;background:none;border:0;color:var(--dim);font-size:22px;cursor:pointer}
@@ -130,6 +133,8 @@ overlay.innerHTML = `
       <div><span class="lbl">WP </span><span class="wp" id="ifr-wp">—</span> <span class="v" id="ifr-wp-pos">(0/0)</span></div>
       <div><span class="lbl">BRG </span><span class="v" id="ifr-wp-brg">---</span>°  <span class="lbl">DIST </span><span class="v" id="ifr-wp-dist">--.-</span> NM  <span class="lbl">DME </span><span class="v" id="ifr-dme">---</span></div>
       <div><span class="lbl">ELP </span><span class="v" id="ifr-wp-elp">00:00</span></div>
+      <div><span class="lbl">ALT REQ </span><span class="v" id="ifr-wp-altreq">—</span></div>
+      <div><span class="lbl">WIND </span><span class="v" id="ifr-wp-wind">CALM</span></div>
     </div>
     <div style="margin-top:8px"><button id="ifr-abort" class="danger">Abort Mission</button></div>
   </div>
@@ -177,7 +182,9 @@ modal.innerHTML = `<div class="box">
 document.body.appendChild(modal);
 function showModal(title, body) {
   document.getElementById('ifr-modal-title').textContent = title;
-  document.getElementById('ifr-modal-body').textContent = body;
+  const bodyEl = document.getElementById('ifr-modal-body');
+  bodyEl.textContent = body;
+  bodyEl.style.whiteSpace = 'pre-line';
   modal.classList.add('show');
 }
 document.getElementById('ifr-modal-ok').addEventListener('click', () => modal.classList.remove('show'));
@@ -265,10 +272,16 @@ function renderMissions() {
     const card = document.createElement('div');
     card.className = 'mission-card';
     const route = (m.waypoints || []).map((w) => w.navaid).join(' → ');
+    const diff = '★'.repeat(m.difficulty || 1) + '☆'.repeat(Math.max(0, 3 - (m.difficulty || 1)));
+    const wind = m.wind && m.wind.speed_kt > 0
+      ? `WIND ${String(m.wind.dir_deg).padStart(3, '0')}°/${m.wind.speed_kt}kt`
+      : 'WIND CALM';
+    const par = m.par_time_min ? `PAR ${m.par_time_min}min` : '';
     card.innerHTML = `
       <div class="ttl">${m.id}: ${m.title || ''}</div>
       <div class="desc">${m.description || ''}</div>
       <div class="route">${route}</div>
+      <div class="meta">${diff} · ${wind} · ${par}</div>
       <button data-id="${m.id}" class="primary start-btn">Start Mission</button>
     `;
     card.querySelector('.start-btn').addEventListener('click', () => startMission(m.id));
@@ -283,13 +296,29 @@ function renderMissions() {
     }
     for (const m of MISSIONS) {
       const route = (m.waypoints || []).map((w) => w.navaid).join('  →  ');
+      const diff = '★'.repeat(m.difficulty || 1) + '☆'.repeat(Math.max(0, 3 - (m.difficulty || 1)));
+      const wind = m.wind && m.wind.speed_kt > 0
+        ? `Wind ${String(m.wind.dir_deg).padStart(3, '0')}°/${m.wind.speed_kt}kt`
+        : 'Wind calm';
+      const par = m.par_time_min ? `Par ${m.par_time_min} min` : '';
+      // Per-waypoint altitude restrictions to set expectations during briefing.
+      const altLines = (m.waypoints || [])
+        .map((w) => {
+          const ab = w.arrival_criteria && w.arrival_criteria.altitude_band;
+          if (!ab) return '';
+          return `<div class="b-alt">${w.navaid}: ${ab[0]}–${ab[1]} ft</div>`;
+        })
+        .filter(Boolean)
+        .join('');
       const card = document.createElement('div');
       card.className = 'b-card';
       card.innerHTML = `
-        <div class="b-id">MISSION ${m.id}</div>
+        <div class="b-id">MISSION ${m.id} · ${diff}</div>
         <div class="b-ttl">${m.title || ''}</div>
         <div class="b-desc">${m.description || ''}</div>
         <div class="b-route">${route}</div>
+        <div class="b-meta">${wind}${par ? ' · ' + par : ''}</div>
+        ${altLines}
         <button data-id="${m.id}" type="button">▶ START MISSION</button>
       `;
       card.querySelector('button').addEventListener('click', () => {
@@ -312,6 +341,12 @@ function startMission(id) {
     state.alt = m.start.altitude_ft != null ? m.start.altitude_ft : state.alt;
     state.ias = m.start.speed_kt != null ? m.start.speed_kt : state.ias;
     state.pitch = 0; state.roll = 0; state.vs = 0;
+  }
+  // Apply mission winds (or calm). Wind is FROM direction in degrees.
+  if (m.wind && typeof m.wind.dir_deg === 'number') {
+    state.wind = { dir_deg: m.wind.dir_deg, speed_kt: m.wind.speed_kt || 0 };
+  } else {
+    state.wind = { dir_deg: 0, speed_kt: 0 };
   }
   // Centre map on aircraft and follow.
   state.map.centerLat = state.lat;
@@ -338,10 +373,21 @@ function endMissionUI() {
   document.getElementById('pnl-active').style.display = 'none';
   document.getElementById('pnl-missions').style.display = 'block';
   window.__ifrActiveRoute = null;
+  // Reset winds to calm after the mission ends.
+  state.wind = { dir_deg: 0, speed_kt: 0 };
 }
 
-runner.on('complete', ({ elapsedMs }) => {
-  showModal('MISSION COMPLETE', `Elapsed: ${fmtElapsed(elapsedMs)}`);
+runner.on('complete', ({ elapsedMs, score }) => {
+  const lines = [`Elapsed: ${fmtElapsed(elapsedMs)}`];
+  if (score) {
+    lines.push(`Score: ${score.total}/100 (${score.grade})`);
+    lines.push(`Time ${score.timePts}/60 · Alt ${score.altPts}/40`);
+    if (score.altSamples > 0) {
+      const pct = Math.round(100 * (1 - score.altViolations / score.altSamples));
+      lines.push(`Altitude compliance: ${pct}%`);
+    }
+  }
+  showModal('MISSION COMPLETE', lines.join('\n'));
   endMissionUI();
 });
 runner.on('fail', () => { showModal('MISSION FAILED', 'Try again.'); endMissionUI(); });
@@ -384,6 +430,25 @@ function update() {
       document.getElementById('ifr-wp-brg').textContent = String(Math.round(brg)).padStart(3, '0');
       document.getElementById('ifr-wp-dist').textContent = d.toFixed(1);
       document.getElementById('ifr-wp-elp').textContent = fmtElapsed(runner.elapsedMs);
+      const altEl = document.getElementById('ifr-wp-altreq');
+      if (altEl) {
+        const ab = wp.arrival_criteria && wp.arrival_criteria.altitude_band;
+        if (ab) {
+          altEl.textContent = `${ab[0]}–${ab[1]} ft`;
+          const inBand = state.alt >= ab[0] && state.alt <= ab[1];
+          altEl.style.color = inBand ? 'var(--accent)' : 'var(--warn)';
+        } else {
+          altEl.textContent = '—';
+          altEl.style.color = '';
+        }
+      }
+      const windEl = document.getElementById('ifr-wp-wind');
+      if (windEl) {
+        const w = state.wind;
+        windEl.textContent = (w && w.speed_kt > 0)
+          ? `${String(Math.round(w.dir_deg)).padStart(3, '0')}°/${Math.round(w.speed_kt)}kt`
+          : 'CALM';
+      }
     }
   }
   requestAnimationFrame(update);

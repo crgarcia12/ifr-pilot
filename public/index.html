@@ -177,6 +177,7 @@
       <span>ALT <b id="alt">3000</b> ft</span>
       <span>IAS <b id="ias">120</b> kt</span>
       <span>V/S <b id="vs">+0</b> fpm</span>
+      <span>WIND <b id="wind">CALM</b></span>
       <span>POS <b id="pos">47.4500, -122.3000</b></span>
       <span>SIM <b id="rate">1x</b></span>
       <span>T <b id="clk">00:00:00</b></span>
@@ -285,7 +286,10 @@
       nav2: { active: 112.30, standby: 115.10 },
       com1: { active: 118.10, standby: 121.90 },
       com2: { active: 119.45, standby: 124.20 }
-    }
+    },
+    // Wind aloft applied to ground track. dir_deg is the FROM direction
+    // (aviation convention). Set per-mission; defaults to calm.
+    wind: { dir_deg: 0, speed_kt: 0 }
   };
 
   function loadRate(){
@@ -533,11 +537,24 @@
     const targetIas = 70 + state.throttle * 110;
     state.ias += (targetIas - state.ias) * Math.min(1, 0.5*dt);
 
-    // Position (flat-earth, fine for this fidelity)
+    // Position (flat-earth, fine for this fidelity).
+    // Air vector from heading + IAS, then add wind vector (wind.dir_deg is the
+    // direction the wind is COMING FROM, aviation convention) to get ground
+    // track. Wind only applies while airborne.
     const distNm = (state.ias / 3600) * dt;
     const hdgRad = state.hdg * Math.PI / 180;
-    const dLat = (distNm * Math.cos(hdgRad)) / 60;
-    const dLon = (distNm * Math.sin(hdgRad)) / (60 * Math.max(0.001, Math.cos(state.lat * Math.PI/180)));
+    let vN = distNm * Math.cos(hdgRad);
+    let vE = distNm * Math.sin(hdgRad);
+    const w = state.wind;
+    if (w && w.speed_kt > 0 && state.alt > 50) {
+      // Wind blows TOWARD (dir + 180). Components: N = -cos(dir), E = -sin(dir).
+      const wRad = w.dir_deg * Math.PI / 180;
+      const wDist = (w.speed_kt / 3600) * dt;
+      vN += -wDist * Math.cos(wRad);
+      vE += -wDist * Math.sin(wRad);
+    }
+    const dLat = vN / 60;
+    const dLon = vE / (60 * Math.max(0.001, Math.cos(state.lat * Math.PI/180)));
     state.lat += dLat; state.lon += dLon;
 
     // Smooth the displayed CDI toward the raw value (1st-order low-pass,
@@ -871,6 +888,7 @@
   const hudEls = {
     hdg: document.getElementById('hdg'), alt: document.getElementById('alt'),
     ias: document.getElementById('ias'), vs:  document.getElementById('vs'),
+    wind: document.getElementById('wind'),
     pos: document.getElementById('pos'), rate:document.getElementById('rate'),
     clk: document.getElementById('clk')
   };
@@ -881,6 +899,12 @@
     hudEls.alt.textContent = fmt(state.alt,1);
     hudEls.ias.textContent = fmt(state.ias,1);
     hudEls.vs.textContent  = (state.vs>=0?'+':'') + fmt(state.vs,1);
+    if (hudEls.wind) {
+      const w = state.wind;
+      hudEls.wind.textContent = (w && w.speed_kt > 0)
+        ? (fmt(w.dir_deg, 3) + '°/' + Math.round(w.speed_kt) + 'kt')
+        : 'CALM';
+    }
     hudEls.pos.textContent = state.lat.toFixed(4)+', '+state.lon.toFixed(4);
     hudEls.rate.textContent = state.simRate + 'x';
     hudEls.clk.textContent = fmtClk(state.simTime);

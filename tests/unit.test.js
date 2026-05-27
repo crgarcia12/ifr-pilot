@@ -253,8 +253,11 @@ test('MissionRunner: abort returns to idle-like state', async () => {
 test('server exposes /api/missions and /api/navaids JSON files', () => {
   const navaids = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'public', 'data', 'navaids.json'), 'utf8'));
   const missions = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'public', 'data', 'missions.json'), 'utf8'));
-  const ids = navaids.navaids.map((n) => n.id).sort();
-  assert.deepEqual(ids, ['AEP-ILS13', 'ROS', 'SNT']);
+  const ids = navaids.navaids.map((n) => n.id);
+  // Original three must still be present (M1 still references them).
+  for (const required of ['AEP-ILS13', 'ROS', 'SNT']) {
+    assert.ok(ids.includes(required), `navaid ${required} missing`);
+  }
   for (const n of navaids.navaids) {
     assert.equal(typeof n.lat, 'number');
     assert.equal(typeof n.lon, 'number');
@@ -264,8 +267,135 @@ test('server exposes /api/missions and /api/navaids JSON files', () => {
   assert.ok(m1, 'mission M1 missing');
   assert.deepEqual(m1.waypoints.map((w) => w.navaid), ['ROS', 'SNT', 'AEP-ILS13']);
 
+  // Every mission references known navaids.
+  const navSet = new Set(ids);
+  for (const m of missions.missions) {
+    for (const wp of m.waypoints) {
+      assert.ok(navSet.has(wp.navaid), `mission ${m.id} references unknown navaid ${wp.navaid}`);
+    }
+  }
+
   // server.js routes both paths.
   const srv = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
   assert.match(srv, /\/api\/navaids/);
   assert.match(srv, /\/api\/missions/);
+});
+
+// ===== Wind drift physics ===================================================
+// Mirror the wind-aware position step from public/index.html so we can verify
+// that ground track diverges from heading in the expected direction.
+test('wind drifts ground track perpendicular to heading', () => {
+  function step(s, dt) {
+    const distNm = (s.ias / 3600) * dt;
+    const hdgRad = s.hdg * Math.PI / 180;
+    let vN = distNm * Math.cos(hdgRad);
+    let vE = distNm * Math.sin(hdgRad);
+    if (s.wind && s.wind.speed_kt > 0 && s.alt > 50) {
+      const wRad = s.wind.dir_deg * Math.PI / 180;
+      const wDist = (s.wind.speed_kt / 3600) * dt;
+      vN += -wDist * Math.cos(wRad);
+      vE += -wDist * Math.sin(wRad);
+    }
+    s.lat += vN / 60;
+    s.lon += vE / (60 * Math.max(0.001, Math.cos(s.lat * Math.PI / 180)));
+  }
+  // Calm: heading 360 (north), should move N only.
+  const calm = { lat: 0, lon: 0, hdg: 0, ias: 120, alt: 5000, wind: { dir_deg: 0, speed_kt: 0 } };
+  for (let i = 0; i < 600; i++) step(calm, 0.1); // 60 sim-seconds
+  assert.ok(calm.lat > 0, 'should move north');
+  assert.ok(Math.abs(calm.lon) < 1e-6, 'no E/W movement with calm winds');
+
+  // Same heading 360, wind FROM 270 (westerly) at 30kt should push the ground
+  // track to the east (positive lon).
+  const wind = { lat: 0, lon: 0, hdg: 0, ias: 120, alt: 5000, wind: { dir_deg: 270, speed_kt: 30 } };
+  for (let i = 0; i < 600; i++) step(wind, 0.1);
+  assert.ok(wind.lat > 0, 'still moves north');
+  assert.ok(wind.lon > 0, `westerly wind should drift aircraft east, got lon=${wind.lon}`);
+  // Sanity: at 30kt for 60s, drift ≈ 0.5 NM east ≈ 1/120 deg lon at equator.
+  assert.ok(wind.lon > 0.003 && wind.lon < 0.015, `drift magnitude unexpected: ${wind.lon}`);
+});
+
+test('wind has no effect when on the ground', () => {
+  function step(s, dt) {
+    const distNm = (s.ias / 3600) * dt;
+    const hdgRad = s.hdg * Math.PI / 180;
+    let vN = distNm * Math.cos(hdgRad);
+    let vE = distNm * Math.sin(hdgRad);
+    if (s.wind && s.wind.speed_kt > 0 && s.alt > 50) {
+      const wRad = s.wind.dir_deg * Math.PI / 180;
+      const wDist = (s.wind.speed_kt / 3600) * dt;
+      vN += -wDist * Math.cos(wRad);
+      vE += -wDist * Math.sin(wRad);
+    }
+    s.lat += vN / 60;
+    s.lon += vE / (60 * Math.max(0.001, Math.cos(s.lat * Math.PI / 180)));
+  }
+  const onGround = { lat: 0, lon: 0, hdg: 0, ias: 0, alt: 0, wind: { dir_deg: 270, speed_kt: 50 } };
+  for (let i = 0; i < 100; i++) step(onGround, 0.1);
+  assert.ok(Math.abs(onGround.lon) < 1e-9, 'no drift while on the ground');
+});
+
+// ===== Mission file shape (new fields) ======================================
+test('every mission has difficulty, par_time_min, and wind fields', () => {
+  const missions = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'public', 'data', 'missions.json'), 'utf8')).missions;
+  assert.ok(missions.length >= 2, 'expected multiple missions');
+  for (const m of missions) {
+    assert.equal(typeof m.difficulty, 'number', `${m.id} difficulty`);
+    assert.ok(m.difficulty >= 1 && m.difficulty <= 3, `${m.id} difficulty 1-3`);
+    assert.equal(typeof m.par_time_min, 'number', `${m.id} par_time_min`);
+    assert.ok(m.par_time_min > 0, `${m.id} par_time positive`);
+    assert.ok(m.wind && typeof m.wind.dir_deg === 'number', `${m.id} wind.dir_deg`);
+    assert.ok(m.wind && typeof m.wind.speed_kt === 'number', `${m.id} wind.speed_kt`);
+  }
+});
+
+// ===== Mission scoring =======================================================
+test('MissionRunner.score returns A grade for on-time, compliant flight', async () => {
+  const { MissionRunner } = await import('../public/js/mission.js');
+  const runner = new MissionRunner();
+  const navaidsById = {
+    A: { id: 'A', lat: 0, lon: 0, type: 'VORDME' },
+    B: { id: 'B', lat: 0.1, lon: 0.1, type: 'VORDME' }
+  };
+  const mission = {
+    id: 'T', par_time_min: 10,
+    waypoints: [
+      { navaid: 'A', arrival_criteria: { radius_nm: 1.5, altitude_band: [3000, 5000] } },
+      { navaid: 'B', arrival_criteria: { radius_nm: 1.5 } }
+    ]
+  };
+  runner.start(mission, navaidsById, 0);
+  // Tick at altitude inside the band, then reach A.
+  runner.tick({ lat: 1, lon: 1, alt: 4000 }, 1000);
+  runner.tick({ lat: 0, lon: 0, alt: 4000 }, 2000);
+  runner.tick({ lat: 0.1, lon: 0.1, alt: 4000 }, 3000);
+  assert.equal(runner.status, 'complete');
+  const s = runner.score();
+  assert.equal(s.timePts, 60, 'under par should give full time points');
+  assert.equal(s.altPts, 40, 'no violations should give full alt points');
+  assert.equal(s.grade, 'A');
+});
+
+test('MissionRunner.score penalises altitude band violations', async () => {
+  const { MissionRunner } = await import('../public/js/mission.js');
+  const runner = new MissionRunner();
+  const navaidsById = {
+    A: { id: 'A', lat: 0, lon: 0, type: 'VORDME' },
+    B: { id: 'B', lat: 0.1, lon: 0.1, type: 'VORDME' }
+  };
+  const mission = {
+    id: 'T', par_time_min: 10,
+    waypoints: [
+      { navaid: 'A', arrival_criteria: { radius_nm: 1.5, altitude_band: [3000, 5000] } },
+      { navaid: 'B', arrival_criteria: { radius_nm: 1.5 } }
+    ]
+  };
+  runner.start(mission, navaidsById, 0);
+  // Three samples below the band, then reach.
+  for (let i = 0; i < 3; i++) runner.tick({ lat: 1, lon: 1, alt: 1000 }, 100 * (i + 1));
+  runner.tick({ lat: 0, lon: 0, alt: 1000 }, 500);
+  runner.tick({ lat: 0.1, lon: 0.1, alt: 1000 }, 600);
+  const s = runner.score();
+  assert.ok(s.altPts < 40, `expected alt penalty, got ${s.altPts}`);
+  assert.ok(s.altViolations > 0);
 });

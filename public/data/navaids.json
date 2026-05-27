@@ -26,6 +26,57 @@
       "runway_heading": 131,
       "glideslope_deg": 3.0,
       "threshold": { "lat": -34.5538, "lon": -58.4180 }
+    },
+    {
+      "id": "EZE",
+      "type": "VORDME",
+      "name": "Ezeiza VOR/DME",
+      "lat": -34.8222,
+      "lon": -58.5358,
+      "freq": 117.80
+    },
+    {
+      "id": "EZE-ILS11",
+      "type": "ILS",
+      "name": "Ezeiza RWY 11 ILS",
+      "lat": -34.8222,
+      "lon": -58.5358,
+      "freq": 109.90,
+      "runway_heading": 113,
+      "glideslope_deg": 3.0,
+      "threshold": { "lat": -34.8222, "lon": -58.5358 }
+    },
+    {
+      "id": "COR",
+      "type": "VORDME",
+      "name": "Cordoba VOR/DME",
+      "lat": -31.3236,
+      "lon": -64.2080,
+      "freq": 114.10
+    },
+    {
+      "id": "MDZ",
+      "type": "VORDME",
+      "name": "Mendoza VOR/DME",
+      "lat": -32.8316,
+      "lon": -68.7929,
+      "freq": 116.40
+    },
+    {
+      "id": "MDP",
+      "type": "VORDME",
+      "name": "Mar del Plata VOR/DME",
+      "lat": -37.9342,
+      "lon": -57.5733,
+      "freq": 115.10
+    },
+    {
+      "id": "BRC",
+      "type": "VORDME",
+      "name": "Bariloche VOR/DME",
+      "lat": -41.1512,
+      "lon": -71.1575,
+      "freq": 113.10
     }
   ]
 }

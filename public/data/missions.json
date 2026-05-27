@@ -2,11 +2,17 @@
   "missions": [
     {
       "id": "M1",
-      "title": "ROS → SNT → AEP ILS 13",
-      "description": "Depart north of Rosario, track ROS VOR, proceed direct SNT, then intercept and fly the ILS RWY 13 approach into Aeroparque (SABE).",
+      "title": "ROS - SNT - AEP ILS 13",
+      "difficulty": 1,
+      "description": "Depart north of Rosario, track ROS VOR, proceed direct SNT, then intercept and fly the ILS RWY 13 approach into Aeroparque (SABE). Calm winds - a gentle first flight.",
+      "par_time_min": 25,
+      "wind": {
+        "dir_deg": 0,
+        "speed_kt": 0
+      },
       "start": {
-        "lat": -32.0000,
-        "lon": -60.5000,
+        "lat": -32,
+        "lon": -60.5,
         "heading": 180,
         "altitude_ft": 5000,
         "speed_kt": 150
@@ -14,15 +20,183 @@
       "waypoints": [
         {
           "navaid": "ROS",
-          "arrival_criteria": { "radius_nm": 1.5 }
+          "arrival_criteria": {
+            "radius_nm": 1.5
+          }
         },
         {
           "navaid": "SNT",
-          "arrival_criteria": { "radius_nm": 1.5 }
+          "arrival_criteria": {
+            "radius_nm": 1.5
+          }
         },
         {
           "navaid": "AEP-ILS13",
-          "arrival_criteria": { "radius_nm": 1.5, "land": true }
+          "arrival_criteria": {
+            "radius_nm": 1.5,
+            "land": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "M2",
+      "title": "Rio de la Plata Crossing - EZE ILS 11",
+      "difficulty": 2,
+      "description": "Cross from north of Rosario to ROS, head south to SNT crossing at or above 4000 ft, then intercept the ILS RWY 11 into Ezeiza. Watch for the southwest wind drifting you off course.",
+      "par_time_min": 28,
+      "wind": {
+        "dir_deg": 220,
+        "speed_kt": 25
+      },
+      "start": {
+        "lat": -33.4,
+        "lon": -61.5,
+        "heading": 110,
+        "altitude_ft": 6000,
+        "speed_kt": 160
+      },
+      "waypoints": [
+        {
+          "navaid": "ROS",
+          "arrival_criteria": {
+            "radius_nm": 1.5,
+            "altitude_band": [
+              4500,
+              8000
+            ]
+          }
+        },
+        {
+          "navaid": "SNT",
+          "arrival_criteria": {
+            "radius_nm": 1.5,
+            "altitude_band": [
+              4000,
+              7000
+            ]
+          }
+        },
+        {
+          "navaid": "EZE",
+          "arrival_criteria": {
+            "radius_nm": 1.5,
+            "altitude_band": [
+              3000,
+              5000
+            ]
+          }
+        },
+        {
+          "navaid": "EZE-ILS11",
+          "arrival_criteria": {
+            "radius_nm": 1.5,
+            "land": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "M3",
+      "title": "Andean Tour - MDZ to COR to AEP",
+      "difficulty": 3,
+      "description": "Long-haul cross-country from Mendoza to Cordoba and finally Aeroparque. Stiff westerly winds at altitude - manage your heading carefully and respect the high-altitude crossing constraints over the Pampas.",
+      "par_time_min": 90,
+      "wind": {
+        "dir_deg": 270,
+        "speed_kt": 40
+      },
+      "start": {
+        "lat": -32.5,
+        "lon": -68,
+        "heading": 60,
+        "altitude_ft": 12000,
+        "speed_kt": 180
+      },
+      "waypoints": [
+        {
+          "navaid": "MDZ",
+          "arrival_criteria": {
+            "radius_nm": 2,
+            "altitude_band": [
+              10000,
+              16000
+            ]
+          }
+        },
+        {
+          "navaid": "COR",
+          "arrival_criteria": {
+            "radius_nm": 2,
+            "altitude_band": [
+              9000,
+              15000
+            ]
+          }
+        },
+        {
+          "navaid": "ROS",
+          "arrival_criteria": {
+            "radius_nm": 1.5,
+            "altitude_band": [
+              5000,
+              10000
+            ]
+          }
+        },
+        {
+          "navaid": "AEP-ILS13",
+          "arrival_criteria": {
+            "radius_nm": 1.5,
+            "land": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "M4",
+      "title": "Atlantic Coast - MDP to SNT to AEP",
+      "difficulty": 2,
+      "description": "Depart east of Mar del Plata over the Atlantic, follow the coast north to San Fernando, then turn final for Aeroparque ILS 13. Brisk easterly sea breeze pushes you inland.",
+      "par_time_min": 35,
+      "wind": {
+        "dir_deg": 90,
+        "speed_kt": 20
+      },
+      "start": {
+        "lat": -38.2,
+        "lon": -57,
+        "heading": 350,
+        "altitude_ft": 5000,
+        "speed_kt": 160
+      },
+      "waypoints": [
+        {
+          "navaid": "MDP",
+          "arrival_criteria": {
+            "radius_nm": 1.5,
+            "altitude_band": [
+              3500,
+              7000
+            ]
+          }
+        },
+        {
+          "navaid": "SNT",
+          "arrival_criteria": {
+            "radius_nm": 1.5,
+            "altitude_band": [
+              3000,
+              6000
+            ]
+          }
+        },
+        {
+          "navaid": "AEP-ILS13",
+          "arrival_criteria": {
+            "radius_nm": 1.5,
+            "land": true
+          }
         }
       ]
     }

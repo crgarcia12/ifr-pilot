@@ -39,6 +39,10 @@ export class MissionRunner {
     this.elapsedMs = 0;
     this.status = 'idle';     // idle | active | complete | failed | aborted
     this._listeners = Object.create(null);
+    // Per-mission performance tracking, used to compute the final score.
+    this.altViolations = 0;   // ticks the aircraft was outside an active alt band
+    this.altSamples = 0;      // ticks an alt band was active
+    this.waypointTimes = [];  // elapsedMs at which each waypoint was reached
   }
 
   on(evt, cb) {
@@ -66,6 +70,9 @@ export class MissionRunner {
     this.startTime = now;
     this.elapsedMs = 0;
     this.status = 'active';
+    this.altViolations = 0;
+    this.altSamples = 0;
+    this.waypointTimes = [];
     this._emit('start', { mission, waypoint: this.activeWaypoint() });
     return this;
   }
@@ -96,15 +103,46 @@ export class MissionRunner {
     this.elapsedMs = now - this.startTime;
     const wp = this.activeWaypoint();
     if (!wp) return;
+    // Sample altitude compliance for scoring (skip the final landing leg).
+    const crit = wp.arrival_criteria || {};
+    if (crit.altitude_band && !crit.land && typeof ac.alt === 'number') {
+      this.altSamples += 1;
+      const [lo, hi] = crit.altitude_band;
+      if (ac.alt < lo || ac.alt > hi) this.altViolations += 1;
+    }
     if (isWaypointReached(ac, wp)) {
+      this.waypointTimes.push(this.elapsedMs);
       this._emit('reach', { index: this.activeIdx, waypoint: wp });
       this.activeIdx += 1;
       if (this.activeIdx >= this.waypoints.length) {
         this.status = 'complete';
-        this._emit('complete', { elapsedMs: this.elapsedMs });
+        this._emit('complete', { elapsedMs: this.elapsedMs, score: this.score() });
       } else {
         this._emit('advance', { waypoint: this.activeWaypoint(), index: this.activeIdx });
       }
     }
+  }
+
+  // Compute a 0-100 mission score from time vs. par and altitude compliance.
+  // Pure function over recorded state — safe to call after `complete`.
+  score() {
+    const m = this.mission || {};
+    const parMs = (m.par_time_min || 0) * 60 * 1000;
+    // Time component: 60 pts if at or under par; linear penalty up to -60 for 2x par.
+    let timePts = 60;
+    if (parMs > 0 && this.elapsedMs > parMs) {
+      const overshoot = (this.elapsedMs - parMs) / parMs; // 0..∞
+      timePts = Math.max(0, 60 - Math.round(overshoot * 60));
+    }
+    // Altitude component: 40 pts proportional to compliance ratio.
+    let altPts = 40;
+    if (this.altSamples > 0) {
+      const compliance = 1 - this.altViolations / this.altSamples;
+      altPts = Math.round(40 * Math.max(0, compliance));
+    }
+    const total = timePts + altPts;
+    const grade = total >= 90 ? 'A' : total >= 75 ? 'B' : total >= 60 ? 'C' : total >= 40 ? 'D' : 'F';
+    return { total, timePts, altPts, grade,
+             altViolations: this.altViolations, altSamples: this.altSamples };
   }
 }
